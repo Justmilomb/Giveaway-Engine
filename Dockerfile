@@ -1,38 +1,22 @@
-# STAGE 1: Builder
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
+# Copy package info
+COPY package*.json ./
 
-# Install dependencies (Force fresh install, ignore lockfile issues)
-# We delete package-lock logic effectively by not copying it or ignoring it
-RUN npm install --legacy-peer-deps --no-audit
+# Install ONLY production dependencies (super fast, no dev tools)
+RUN npm install --omit=dev --legacy-peer-deps
 
-# Copy source code
+# Copy the ALREADY BUILT app
 COPY . .
 
-# Build the project
-RUN npm run build
-
-# STAGE 2: Production Runner
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
+# Setup user
 ENV NODE_ENV=production
 ENV PORT=5000
-
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Copy built artifacts
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-
 USER appuser
 
 EXPOSE 5000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "dist/index.cjs"]
