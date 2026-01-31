@@ -58,28 +58,30 @@ export function extractPostId(url: string): string | null {
 
 /**
  * Fetch comments from an Instagram post
- * Uses custom scraper if USE_CUSTOM_SCRAPER=true, otherwise tries Apify first
+ * Prioritizes custom scraper when credentials are available, otherwise falls back to Apify
  */
 export async function fetchInstagramComments(
     postCode: string
 ): Promise<FetchCommentsResult> {
     const useCustomScraper = process.env.USE_CUSTOM_SCRAPER === "true";
+    const useApify = process.env.USE_APIFY === "true";
+    const hasCredentials = process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD;
     const postUrl = postCode.startsWith("http") ? postCode : `https://www.instagram.com/p/${postCode}/`;
 
-    // Use custom scraper if explicitly enabled
+    // Explicit override: Use custom scraper if USE_CUSTOM_SCRAPER=true
     if (useCustomScraper) {
-        log(`Using custom scraper for post: ${postCode}`, "instagram");
+        log(`Using custom scraper for post: ${postCode} (explicit override)`, "instagram");
         return await fetchWithCustomScraper(postUrl);
     }
 
-    // Try Apify first (if token is available)
-    if (process.env.APIFY_TOKEN) {
+    // Explicit override: Use Apify if USE_APIFY=true
+    if (useApify && process.env.APIFY_TOKEN) {
         try {
-            log(`Fetching comments for post: ${postCode} via Apify`, "instagram");
+            log(`Using Apify for post: ${postCode} (explicit override)`, "instagram");
             const result = await fetchWithApify(postCode, postUrl);
             
-            // If Apify only returned 15 comments (free tier limit), fallback to custom scraper
-            if (result.comments.length <= 15 && process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD) {
+            // If Apify only returned 15 comments (free tier limit), fallback to custom scraper if credentials exist
+            if (result.comments.length <= 15 && hasCredentials) {
                 log(`Apify returned only ${result.comments.length} comments (free tier limit). Falling back to custom scraper.`, "instagram");
                 return await fetchWithCustomScraper(postUrl);
             }
@@ -87,18 +89,32 @@ export async function fetchInstagramComments(
             return result;
         } catch (error) {
             log(`Apify failed: ${error}. Falling back to custom scraper.`, "instagram");
-            // Fallback to custom scraper if Apify fails
-            if (process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD) {
+            if (hasCredentials) {
                 return await fetchWithCustomScraper(postUrl);
             }
             throw error;
         }
     }
 
-    // No Apify token, try custom scraper
-    if (process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD) {
-        log(`No APIFY_TOKEN found. Using custom scraper for post: ${postCode}`, "instagram");
-        return await fetchWithCustomScraper(postUrl);
+    // Default: If credentials exist, use custom scraper (prioritized)
+    if (hasCredentials) {
+        log(`Using custom scraper for post: ${postCode} (credentials available)`, "instagram");
+        try {
+            return await fetchWithCustomScraper(postUrl);
+        } catch (error) {
+            log(`Custom scraper failed: ${error}. Falling back to Apify.`, "instagram");
+            // Fallback to Apify if custom scraper fails
+            if (process.env.APIFY_TOKEN) {
+                return await fetchWithApify(postCode, postUrl);
+            }
+            throw error;
+        }
+    }
+
+    // No credentials: Try Apify if token is available
+    if (process.env.APIFY_TOKEN) {
+        log(`Using Apify for post: ${postCode} (no credentials available)`, "instagram");
+        return await fetchWithApify(postCode, postUrl);
     }
 
     throw new Error("Neither APIFY_TOKEN nor INSTAGRAM_USERNAME/INSTAGRAM_PASSWORD are configured");
