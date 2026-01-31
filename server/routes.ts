@@ -100,6 +100,48 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // PAYMENT ENDPOINTS
+  // ============================================
+
+  // Process payment and generate access token
+  // In production, this would integrate with Stripe
+  app.post("/api/payment/process", async (req, res) => {
+    try {
+      const { amount, url } = req.body;
+      const ip = getClientIP(req);
+
+      // Validate the payment amount
+      if (amount !== 500) { // £5.00 in pence
+        return res.status(400).json({ error: "Invalid payment amount" });
+      }
+
+      // Validate URL is provided
+      if (!url || typeof url !== "string" || !url.includes("instagram.com")) {
+        return res.status(400).json({ error: "Valid Instagram URL required" });
+      }
+
+      // TODO: In production, integrate with Stripe here
+      // For now, simulate successful payment and generate token
+
+      // Generate a one-time use payment token
+      const paymentToken = generatePurchaseToken(1); // 1 API call
+
+      console.log(`[Payment] Processed £5.00 payment from ${ip}, token: ${paymentToken}`);
+
+      return res.json({
+        success: true,
+        paymentToken: paymentToken,
+        message: "Payment successful. You can now fetch comments."
+      });
+    } catch (error) {
+      console.error("Payment Error:", error);
+      return res.status(500).json({
+        error: "Payment processing failed. Please try again."
+      });
+    }
+  });
+
+  // ============================================
   // INSTAGRAM ENDPOINTS
   // ============================================
 
@@ -139,14 +181,14 @@ export async function registerRoutes(
     }
   );
 
-  // Instagram comments endpoint - PROTECTED
+  // Instagram comments endpoint - PROTECTED - REQUIRES PAYMENT
   app.post("/api/instagram/comments",
     validateInstagramRequest,
     instagramRateLimiter,
     createTrackingMiddleware("instagram"),
     async (req, res) => {
       try {
-        const { url, demo } = req.body;
+        const { url, demo, paymentToken } = req.body;
         const ip = getClientIP(req);
 
         const postId = extractPostId(url);
@@ -156,7 +198,7 @@ export async function registerRoutes(
           });
         }
 
-        // Demo mode - return mock data
+        // Demo mode - return mock data (FREE)
         if (demo) {
           const mockComments = generateMockComments(150);
 
@@ -176,7 +218,24 @@ export async function registerRoutes(
           });
         }
 
-        // Real API call - payment handled via UI flow
+        // PAYMENT REQUIRED - must have valid payment token
+        if (!paymentToken || typeof paymentToken !== "string") {
+          return res.status(402).json({
+            error: "Payment required. Please complete payment before fetching comments.",
+            paymentRequired: true
+          });
+        }
+
+        // Verify the payment token
+        const tokenResult = redeemPurchaseToken(ip, paymentToken);
+        if (!tokenResult.success) {
+          return res.status(402).json({
+            error: tokenResult.error || "Invalid payment token",
+            paymentRequired: true
+          });
+        }
+
+        // Payment successful - now make the API call
         const result = await fetchInstagramComments(postId);
 
         // Fraud detection
@@ -204,15 +263,12 @@ export async function registerRoutes(
           };
         });
 
-        // Get updated credit status
-        const creditStatus = checkCredits(ip);
-
         return res.json({
           entries: entriesWithFraud,
           total: result.total,
           postInfo: result.postInfo,
           demo: false,
-          creditsRemaining: creditStatus.remaining,
+          paid: true,
           fraudStats: {
             flagged: entriesWithFraud.filter((e: any) => e.fraudScore > 20).length,
             total: entriesWithFraud.length,

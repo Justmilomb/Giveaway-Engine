@@ -38,6 +38,8 @@ export default function GiveawayTool() {
   // Input State
   const [url, setUrl] = useState("");
   const [isDemo, setIsDemo] = useState(false);
+  const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
 
   // Rules State
@@ -83,6 +85,7 @@ export default function GiveawayTool() {
     }
   }, [winnerCount, filterKeyword, minMentions, requireMention, excludeDuplicates, blockList, enableBonusChances, excludeFraud]);
 
+  // Handle initial form submission - validates URL and goes to payment (or demo)
   const handleFetch = async (e: React.FormEvent) => {
     e.preventDefault();
     setFetchError(null);
@@ -93,16 +96,81 @@ export default function GiveawayTool() {
       return;
     }
 
-    setStep("fetching");
+    // If demo mode, fetch immediately (free)
+    if (isDemo) {
+      setStep("fetching");
+      try {
+        const response = await fetch("/api/instagram/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, demo: true }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to fetch");
+
+        const entries = (data.entries || []).map((entry: any) => ({
+          ...entry,
+          fraudScore: entry.fraudScore || 0,
+        }));
+
+        setFetchedEntries(entries);
+        setIsDemo(true);
+        setStep("options");
+
+        const initialValid = filterEntries(entries, {
+          keyword: "",
+          mentions: 1,
+          requireMention: false,
+          duplicates: true,
+          blockList: blockList,
+          excludeFraud: excludeFraud
+        });
+        setValidEntries(initialValid);
+
+        toast({ title: "Demo Mode", description: `Loaded ${entries.length} sample entries` });
+      } catch (error) {
+        setFetchError(error instanceof Error ? error.message : "Unknown error");
+        setStep("input");
+        toast({ title: "Error", description: "Failed to load demo data", variant: "destructive" });
+      }
+      return;
+    }
+
+    // Non-demo: go to payment step first
+    setStep("payment");
+  };
+
+  // Process payment and fetch comments
+  const handleProcessPayment = async () => {
+    setIsProcessingPayment(true);
 
     try {
-      const endpoint = "/api/instagram/comments";
-      const body = { url, demo: isDemo };
-
-      const response = await fetch(endpoint, {
+      // Step 1: Process payment
+      const paymentRes = await fetch("/api/payment/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ amount: 500, url }), // £5.00 in pence
+      });
+
+      const paymentData = await paymentRes.json();
+
+      if (!paymentRes.ok) {
+        throw new Error(paymentData.error || "Payment failed");
+      }
+
+      const token = paymentData.paymentToken;
+      setPaymentToken(token);
+
+      toast({ title: "Payment Successful", description: "Fetching comments..." });
+
+      // Step 2: Fetch comments with the payment token
+      setStep("fetching");
+
+      const response = await fetch("/api/instagram/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, demo: false, paymentToken: token }),
       });
 
       const data = await response.json();
@@ -117,10 +185,9 @@ export default function GiveawayTool() {
       }));
 
       setFetchedEntries(entries);
-      setIsDemo(data.demo === true);
+      setIsDemo(false);
       setStep("options");
 
-      // Initial filter application
       const initialValid = filterEntries(entries, {
         keyword: "",
         mentions: 1,
@@ -131,25 +198,22 @@ export default function GiveawayTool() {
       });
       setValidEntries(initialValid);
 
-      const message = data.demo
-        ? `Demo mode: Loaded ${entries.length} sample entries`
-        : `Loaded ${entries.length} valid entries!`;
-
       toast({
-        title: data.demo ? "Demo Mode" : "Success",
-        description: message,
-        ...(data.demo && { variant: "default" as const })
+        title: "Success!",
+        description: `Loaded ${entries.length} comments from Instagram`
       });
 
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error("Payment/Fetch error:", error);
       setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
       setStep("input");
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : `Failed to fetch data`,
+        description: error instanceof Error ? error.message : "Payment or fetch failed",
         variant: "destructive"
       });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -274,6 +338,7 @@ export default function GiveawayTool() {
     setValidEntries([]);
     setIsDemo(false);
     setFetchError(null);
+    setPaymentToken(null);
   };
 
   const handleSetScheduleTime = () => {
@@ -648,11 +713,12 @@ export default function GiveawayTool() {
                   </div>
 
                   <Button
-                    onClick={() => setStep("payment")}
+                    onClick={handlePickWinners}
                     disabled={validEntries.length === 0}
                     className="w-full neo-btn-primary text-xl py-6 disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 border-green-700 mb-4"
                   >
-                    {scheduleDate ? "Pay £5 to Schedule" : "Pay £5 to Generate Winners"}
+                    <PartyPopper className="mr-2 w-6 h-6" />
+                    {scheduleDate ? "Schedule Giveaway" : "Pick Winners Now!"}
                   </Button>
 
                   <Button
@@ -738,44 +804,59 @@ export default function GiveawayTool() {
                     <Button variant="ghost" onClick={() => setStep("options")}>Base options</Button>
                   </div>
                 ) : (
-                  // Instant Payment View
+                  // Instant Payment View - pay first, then fetch comments
                   <>
                     <div className="text-center mb-8">
                       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-black">
                         <span className="text-2xl">💷</span>
                       </div>
-                      <h2 className="text-3xl font-black uppercase mb-2">Pay as you go</h2>
-                      <p className="text-muted-foreground">No subscription. Just one-time payment.</p>
+                      <h2 className="text-3xl font-black uppercase mb-2">Pay to Continue</h2>
+                      <p className="text-muted-foreground">One-time payment to access Instagram comments</p>
                     </div>
 
                     <div className="space-y-6 mb-8">
                       <div className="flex justify-between items-center p-4 border-2 border-black bg-slate-50">
-                        <span className="font-bold uppercase">Single Round</span>
+                        <span className="font-bold uppercase">Giveaway Round</span>
                         <span className="font-black text-xl">£5.00</span>
                       </div>
 
+                      <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded">
+                        <p className="text-sm font-medium text-blue-800">
+                          ✓ Fetch all comments from your post<br />
+                          ✓ Filter & pick random winners<br />
+                          ✓ Download winner announcement image
+                        </p>
+                      </div>
+
                       <div className="space-y-2">
-                        <Label className="uppercase font-bold text-xs">Card Details (Secure)</Label>
-                        <div className="p-3 border-2 border-slate-300 rounded bg-slate-50 text-slate-400 font-mono text-sm flex items-center justify-between">
-                          <span>4242 4242 4242 4242</span>
-                          <span>MM/YY</span>
+                        <div className="p-4 border-2 border-slate-200 rounded bg-slate-50 text-center">
+                          <span className="text-slate-500 font-medium">🔒 Secure payment via Stripe</span>
                         </div>
                       </div>
                     </div>
 
                     <Button
-                      onClick={handlePickWinners}
-                      className="w-full neo-btn-primary bg-black text-white text-xl py-6"
+                      onClick={handleProcessPayment}
+                      disabled={isProcessingPayment}
+                      className="w-full neo-btn-primary bg-[#E1306C] hover:bg-[#C13584] text-white text-xl py-6"
                     >
-                      Pay £5.00 & Spin
+                      {isProcessingPayment ? (
+                        <>
+                          <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Pay £5.00 & Fetch Comments"
+                      )}
                     </Button>
 
                     <Button
                       variant="ghost"
-                      onClick={() => setStep("options")}
+                      onClick={() => setStep("input")}
                       className="w-full mt-2"
+                      disabled={isProcessingPayment}
                     >
-                      Back to Options
+                      Back to URL Input
                     </Button>
                   </>
                 )}

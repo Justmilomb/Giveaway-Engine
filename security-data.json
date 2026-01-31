@@ -4,13 +4,13 @@
       "ip": "127.0.0.1",
       "credits": 3,
       "freeCreditsUsed": 2,
-      "totalRequests": 10,
-      "instagramCalls": 5,
+      "totalRequests": 12,
+      "instagramCalls": 6,
       "giveawaysCreated": 0,
       "emailsSent": 0,
-      "imagesGenerated": 5,
-      "lastActivity": "2026-01-30T19:28:56.220Z",
-      "suspicious": false,
+      "imagesGenerated": 6,
+      "lastActivity": "2026-01-31T01:20:33.081Z",
+      "suspicious": true,
       "blocked": false,
       "purchaseTokens": [
         "PAY_7b281288-9dcb-44ed-aae2-3d9ed57195c6"

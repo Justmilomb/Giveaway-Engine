@@ -29,7 +29,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-col">
               <span className="font-display font-black text-2xl md:text-3xl tracking-tight uppercase italic leading-none">
-                <span className="text-primary">Pick</span> Us A <span className="text-primary">Winner</span>
+                <span className="text-primary">Pick</span>
+                <span className="mx-1">Us</span>
+                <span className="text-primary mx-1">A</span>
+                <span>Winner</span>
               </span>
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none mt-1 hidden sm:block">
                 #1 Winner Picker
@@ -126,7 +129,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="bg-black p-2 border-2 border-white">
                   <Gift className="w-8 h-8 text-white" />
                 </div>
-                <span className="font-display font-black text-3xl md:text-4xl uppercase italic tracking-tight"><span className="text-primary">Pick</span> Us A <span className="text-primary">Winner</span></span>
+                <span className="font-display font-black text-3xl md:text-4xl uppercase italic tracking-tight"><span className="text-primary">Pick</span> <span>Us</span> <span className="text-primary">A</span> <span>Winner</span></span>
               </div>
               <p className="text-xl font-bold leading-relaxed max-w-md">
                 The fastest and fairest way to pick winners for your social media giveaways. Built for creators who value transparency.
