@@ -2,14 +2,14 @@
   "usage": {
     "127.0.0.1": {
       "ip": "127.0.0.1",
-      "credits": 25,
+      "credits": 27,
       "freeCreditsUsed": 2,
-      "totalRequests": 35,
-      "instagramCalls": 29,
+      "totalRequests": 37,
+      "instagramCalls": 31,
       "giveawaysCreated": 0,
       "emailsSent": 0,
       "imagesGenerated": 6,
-      "lastActivity": "2026-01-31T11:01:08.610Z",
+      "lastActivity": "2026-02-07T16:18:55.565Z",
       "suspicious": true,
       "blocked": false,
       "purchaseTokens": [
@@ -35,7 +35,9 @@
         "PAY_e739fe82-eeae-4c19-bcdf-23c2cee0ad21",
         "PAY_a64e0657-c2ec-4575-99fe-aeaef0fdd67e",
         "PAY_abdbe5cd-00f3-4430-b4f2-b58896892996",
-        "PAY_07c055fb-3e1e-4be1-b99e-68184de7b5f5"
+        "PAY_07c055fb-3e1e-4be1-b99e-68184de7b5f5",
+        "PAY_d19f3179-013d-4bf8-a32c-01e217d2f387",
+        "PAY_dda32c64-beac-45e4-a90d-d0b13822c8ae"
       ]
     }
   },
@@ -181,6 +183,18 @@
       "createdAt": "2026-01-31T11:01:08.605Z",
       "usedBy": "127.0.0.1",
       "usedAt": "2026-01-31T11:01:08.611Z"
+    },
+    "PAY_d19f3179-013d-4bf8-a32c-01e217d2f387": {
+      "credits": 1,
+      "createdAt": "2026-02-07T16:12:23.751Z",
+      "usedBy": "127.0.0.1",
+      "usedAt": "2026-02-07T16:12:23.756Z"
+    },
+    "PAY_dda32c64-beac-45e4-a90d-d0b13822c8ae": {
+      "credits": 1,
+      "createdAt": "2026-02-07T16:18:55.552Z",
+      "usedBy": "127.0.0.1",
+      "usedAt": "2026-02-07T16:18:55.565Z"
     }
   }
 }
