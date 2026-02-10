@@ -10,6 +10,7 @@
  *   npm run test-scraper https://www.instagram.com/p/CODE/
  */
 
+import "dotenv/config";
 import { InstagramScraper } from './instagram-scraper';
 import { log } from '../log';
 

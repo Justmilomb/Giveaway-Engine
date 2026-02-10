@@ -438,11 +438,6 @@ export class InstagramScraper {
             const results = new Map<string, any>();
             const seenKeys = new Set<string>();
 
-            // SAFE: Generate unique key function (no __name variable)
-            const generateKey = (username: string, text: string): string => {
-                return `${username.toLowerCase()}:${text.substring(0, 50).toLowerCase()}`;
-            };
-
             const usernamePattern = /^[a-zA-Z0-9._]{1,30}$/;
             const timestampPattern = /^(Edited\s*•?\s*)?\d+\s*[hdwm]$/i;
 
@@ -479,7 +474,7 @@ export class InstagramScraper {
 
                 if (!text) continue;
 
-                const key = generateKey(username, text);
+                const key = `${username.toLowerCase()}:${text.substring(0, 50).toLowerCase()}`;
                 if (seenKeys.has(key)) continue;
 
                 // Get avatar if available
@@ -495,8 +490,11 @@ export class InstagramScraper {
                     }
                 }
 
+                // Generate ID safely
+                const id = `${username}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
                 const comment = {
-                    id: `${username}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                    id: id,
                     username,
                     text,
                     timestamp: new Date().toISOString(),
@@ -526,11 +524,12 @@ export class InstagramScraper {
                         // Save previous comment
                         if (currentUsername && currentText.length > 0) {
                             const text = currentText.join(' ').trim();
-                            const key = generateKey(currentUsername, text);
+                            const key = `${currentUsername.toLowerCase()}:${text.substring(0, 50).toLowerCase()}`;
                             if (!seenKeys.has(key)) {
                                 seenKeys.add(key);
+                                const id = `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
                                 results.set(currentUsername, {
-                                    id: `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                                    id: id,
                                     username: currentUsername,
                                     text,
                                     timestamp: new Date().toISOString(),
@@ -552,11 +551,12 @@ export class InstagramScraper {
                     if (/^Reply$/i.test(line)) {
                         if (currentText.length > 0) {
                             const text = currentText.join(' ').trim();
-                            const key = generateKey(currentUsername, text);
+                            const key = `${currentUsername.toLowerCase()}:${text.substring(0, 50).toLowerCase()}`;
                             if (!seenKeys.has(key)) {
                                 seenKeys.add(key);
+                                const id = `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
                                 results.set(currentUsername, {
-                                    id: `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                                    id: id,
                                     username: currentUsername,
                                     text,
                                     timestamp: new Date().toISOString(),
@@ -579,10 +579,11 @@ export class InstagramScraper {
             // Save last comment
             if (currentUsername && currentText.length > 0) {
                 const text = currentText.join(' ').trim();
-                const key = generateKey(currentUsername, text);
+                const key = `${currentUsername.toLowerCase()}:${text.substring(0, 50).toLowerCase()}`;
                 if (!seenKeys.has(key)) {
+                    const id = `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
                     results.set(currentUsername, {
-                        id: `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                        id: id,
                         username: currentUsername,
                         text,
                         timestamp: new Date().toISOString(),

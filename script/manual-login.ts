@@ -41,14 +41,30 @@ async function manualLogin() {
             "--disable-dev-shm-usage",
             "--window-size=1366,768",
         ],
-        defaultViewport: { width: 1366, height: 768 },
+        userDataDir: "./.puppeteer-login-profile", // Create a temporary profile for login
+        defaultViewport: null,
     });
 
     const page = await browser.newPage();
     
+    // Set user agent to Chrome 122 Windows (recent)
     await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     );
+
+    // Try to load existing session if present (to avoid fresh login if possible)
+    try {
+        if (fs.existsSync(SESSION_FILE)) {
+            const data = fs.readFileSync(SESSION_FILE, "utf-8");
+            const session = JSON.parse(data);
+            if (session.cookies && session.cookies.length > 0) {
+                await page.setCookie(...session.cookies);
+                console.log("Found existing cookies, trying to restore session...");
+            }
+        }
+    } catch (e) {
+        console.log("Error loading existing session, starting fresh.");
+    }
 
     console.log("📱 Navigating to Instagram...\n");
     await page.goto("https://www.instagram.com/accounts/login/", {
@@ -68,18 +84,39 @@ async function manualLogin() {
     console.log("═══════════════════════════════════════════════════════════════");
     console.log("");
 
-    await waitForEnter("Press ENTER after you're logged in to Instagram... ");
+    // Wait for login to complete (check every 2 seconds)
+    console.log("Waiting for login to complete...");
+    while (true) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        try {
+            const currentUrl = page.url();
+            // If we're on instagram.com and NOT on login/accounts/challenge pages
+            if (currentUrl.includes("instagram.com") && 
+                !currentUrl.includes("/accounts/login") && 
+                !currentUrl.includes("/challenge") &&
+                !currentUrl.includes("/accounts/onetap")) {
+                
+                // Double check for logged-in indicators
+                const isLoggedIn = await page.evaluate(() => {
+                    // Look for profile icon, home icon, or specific logged-in elements
+                    return !!document.querySelector('a[href*="/direct/inbox/"]') || 
+                           !!document.querySelector('a[href*="/explore/"]') ||
+                           !!document.querySelector('svg[aria-label="Home"]');
+                });
 
-    // Verify we're logged in by checking the URL
-    const currentUrl = page.url();
-    console.log(`\n📍 Current URL: ${currentUrl}`);
-
-    if (currentUrl.includes("/accounts/login")) {
-        console.log("\n❌ It looks like you're still on the login page.");
-        console.log("   Please log in first, then run this script again.");
-        await browser.close();
-        process.exit(1);
+                if (isLoggedIn) {
+                    console.log(`\n📍 Logged in! Current URL: ${currentUrl}`);
+                    break;
+                }
+            }
+        } catch (e) {
+            // Ignore errors during check (page might be navigating)
+        }
     }
+
+    // Give it a moment to settle cookies
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Get all cookies
     const cookies = await page.cookies();

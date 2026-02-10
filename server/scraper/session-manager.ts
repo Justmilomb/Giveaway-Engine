@@ -117,7 +117,8 @@ export class SessionManager {
             'input[name="username"]',
             'input[aria-label*="username" i]',
             'input[aria-label*="phone" i]',
-            'input[type="text"]',
+            'input[type="text"]', // Restoring generic selector as fallback
+            'form',
         ];
 
         for (let attempt = 0; attempt < retries; attempt++) {
@@ -193,6 +194,13 @@ export class SessionManager {
             }
             if (!usernameInput) {
                 usernameInput = await page.$('input[aria-label*="phone" i]') as ElementHandle<HTMLInputElement> | null;
+            }
+            if (!usernameInput) {
+                // Fallback: first text input on page
+                usernameInput = await page.$('input[type="text"]') as ElementHandle<HTMLInputElement> | null;
+                if (usernameInput) {
+                    log("Using generic text input as username fallback", "scraper");
+                }
             }
             if (!usernameInput) {
                 throw new Error("Could not find username input field");
