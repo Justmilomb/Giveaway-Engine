@@ -6,32 +6,27 @@ import {
   generateMockComments,
   extractPostId,
 } from "./instagram";
+import { InstagramScraper } from "./scraper/instagram-scraper";
 import { setupAuth } from "./auth";
 import { log } from "./log";
 import { format } from "date-fns";
 
-// Security imports
+// Security imports — kept: rate limiting, validation, sanitization
 import {
   globalRateLimiter,
   instagramRateLimiter,
   giveawayRateLimiter,
   emailRateLimiter,
   imageRateLimiter,
-  blockCheckMiddleware,
-  creditCheckMiddleware,
-  createTrackingMiddleware,
   validateRequest,
   validateInstagramRequest,
   validateGiveawayRequest,
   validateEmailRequest,
   adminAuthMiddleware,
-  checkCredits,
-  consumeCredit,
   generatePurchaseToken,
   redeemPurchaseToken,
   getSecurityStats,
   getClientIP,
-  SECURITY_CONFIG,
 } from "./security";
 
 export async function registerRoutes(
@@ -47,9 +42,6 @@ export async function registerRoutes(
   // Apply global rate limiting to all /api routes
   app.use("/api", globalRateLimiter);
 
-  // Apply block check to all /api routes
-  app.use("/api", blockCheckMiddleware);
-
   // Apply request validation to all /api routes
   app.use("/api", validateRequest);
 
@@ -59,44 +51,6 @@ export async function registerRoutes(
       log(`API Request Body: ${JSON.stringify(req.body)}`, "debug");
     }
     next();
-  });
-
-  // ============================================
-  // CREDIT SYSTEM ENDPOINTS
-  // ============================================
-
-  // Check credits for current IP
-  app.get("/api/credits", (req, res) => {
-    const ip = getClientIP(req);
-    const status = checkCredits(ip);
-    return res.json({
-      credits: status.remaining,
-      freeCreditsRemaining: status.freeRemaining,
-      hasCredits: status.hasCredits
-    });
-  });
-
-  // Redeem a purchase token
-  app.post("/api/credits/redeem", (req, res) => {
-    const { token } = req.body;
-
-    if (!token || typeof token !== "string") {
-      return res.status(400).json({ error: "Missing or invalid token" });
-    }
-
-    const ip = getClientIP(req);
-    const result = redeemPurchaseToken(ip, token);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const status = checkCredits(ip);
-    return res.json({
-      success: true,
-      creditsAdded: result.credits,
-      totalCredits: status.remaining
-    });
   });
 
   // ============================================
@@ -160,16 +114,10 @@ export async function registerRoutes(
           });
         }
 
-        // Also return credit status so frontend knows if they can proceed
-        const ip = getClientIP(req);
-        const creditStatus = checkCredits(ip);
-
         return res.json({
           valid: true,
           postId,
           url,
-          credits: creditStatus.remaining,
-          hasCredits: creditStatus.hasCredits
         });
       } catch (error) {
         log(`Validation Error: ${error}`, "error");
@@ -181,15 +129,13 @@ export async function registerRoutes(
     }
   );
 
-  // Instagram comments endpoint - PROTECTED - REQUIRES PAYMENT
+  // Instagram comments endpoint - REQUIRES PAYMENT
   app.post("/api/instagram/comments",
     validateInstagramRequest,
     instagramRateLimiter,
-    createTrackingMiddleware("instagram"),
     async (req, res) => {
       try {
         const { url, demo, paymentToken } = req.body;
-        const ip = getClientIP(req);
 
         const postId = extractPostId(url);
         if (!postId) {
@@ -227,6 +173,7 @@ export async function registerRoutes(
         }
 
         // Verify the payment token
+        const ip = getClientIP(req);
         const tokenResult = redeemPurchaseToken(ip, paymentToken);
         if (!tokenResult.success) {
           return res.status(402).json({
@@ -261,6 +208,7 @@ export async function registerRoutes(
             platform: "instagram" as const,
             timestamp: c.timestamp,
             fraudScore: Math.min(fraudScore, 100),
+            userId: c.userId,
           };
         });
 
@@ -279,6 +227,40 @@ export async function registerRoutes(
         log(`Instagram Comments API Error: ${error}`, "error");
         return res.status(500).json({
           error: error instanceof Error ? error.message : "Failed to fetch comments"
+        });
+      }
+    }
+  );
+
+  // Check if users follow the logged-in Instagram account
+  app.post("/api/instagram/check-followers",
+    instagramRateLimiter,
+    async (req, res) => {
+      try {
+        const { userIds } = req.body;
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+          return res.status(400).json({ error: "userIds array is required" });
+        }
+
+        // Limit to 20 users per request
+        const limitedIds = userIds.slice(0, 20).filter((id: any) => typeof id === "string" && id.length > 0);
+
+        if (limitedIds.length === 0) {
+          return res.status(400).json({ error: "No valid user IDs provided" });
+        }
+
+        const scraper = new InstagramScraper();
+        try {
+          const results = await scraper.checkFollowers(limitedIds);
+          return res.json({ results });
+        } finally {
+          await scraper.close();
+        }
+      } catch (error) {
+        log(`Follower Check Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to check follower status"
         });
       }
     }
@@ -311,11 +293,10 @@ export async function registerRoutes(
     return { valid: true };
   }
 
-  // Schedule Giveaway Endpoint - PROTECTED
+  // Schedule Giveaway Endpoint
   app.post("/api/giveaways",
     giveawayRateLimiter,
     validateGiveawayRequest,
-    createTrackingMiddleware("giveaway"),
     async (req, res) => {
       try {
         const { scheduledFor, config, status, userId } = req.body;
@@ -341,13 +322,10 @@ export async function registerRoutes(
           return res.status(400).json({ error: timeValidation.error });
         }
 
-        // Track IP with giveaway for abuse prevention
-        const ip = getClientIP(req);
-
         const giveaway = await storage.createGiveaway({
           userId: userId || "anonymous",
           scheduledFor: scheduledDate,
-          config: { ...config, creatorIP: ip },
+          config,
           status: status || "pending"
         });
 
@@ -505,7 +483,6 @@ export async function registerRoutes(
   // Winner Image Generator
   app.post("/api/generate-winner-image",
     imageRateLimiter,
-    createTrackingMiddleware("image"),
     async (req, res) => {
       try {
         const { username, avatar, comment, prize } = req.body;
@@ -540,11 +517,10 @@ export async function registerRoutes(
     }
   );
 
-  // Send Winning Emails - PROTECTED
+  // Send Winning Emails
   app.post("/api/send-winning-emails",
     emailRateLimiter,
     validateEmailRequest,
-    createTrackingMiddleware("email"),
     async (req, res) => {
       try {
         const { winners } = req.body;

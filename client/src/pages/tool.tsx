@@ -30,6 +30,8 @@ interface Entry {
   platform: "instagram";
   timestamp?: string;
   fraudScore?: number;
+  userId?: string;
+  followsYou?: boolean;
 }
 
 export default function GiveawayTool() {
@@ -292,7 +294,7 @@ export default function GiveawayTool() {
 
     setStep("picking");
     // Simulate picking delay
-    setTimeout(() => {
+    setTimeout(async () => {
       let selectedWinners: Entry[] = [];
 
       if (enableBonusChances) {
@@ -327,6 +329,29 @@ export default function GiveawayTool() {
 
       setWinners(selectedWinners);
       setStep("results");
+
+      // Check follow status for winners that have userIds
+      const winnersWithUserId = selectedWinners.filter(w => w.userId);
+      if (winnersWithUserId.length > 0 && !isDemo) {
+        try {
+          const response = await fetch("/api/instagram/check-followers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userIds: winnersWithUserId.map(w => w.userId),
+            }),
+          });
+          if (response.ok) {
+            const { results } = await response.json();
+            setWinners(prev => prev.map(w => ({
+              ...w,
+              followsYou: w.userId ? results[w.userId] : undefined,
+            })));
+          }
+        } catch {
+          // Silently fail — follow status is optional
+        }
+      }
     }, 3000);
   };
 

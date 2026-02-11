@@ -10,6 +10,7 @@ export interface InstagramComment {
     timestamp: string;
     likes: number;
     avatar?: string;
+    userId?: string;
 }
 
 export interface FetchCommentsResult {

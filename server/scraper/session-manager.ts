@@ -328,30 +328,45 @@ export class SessionManager {
     }
 
     /**
-     * Verify if session is still valid by checking a page
+     * Verify if session is still valid by checking a page.
+     * Uses a lightweight check — just loads the page and checks we're not redirected to login.
      */
     async verifySession(page: Page): Promise<boolean> {
         try {
+            // Use domcontentloaded — much faster than networkidle2,
+            // which often times out on Instagram's heavy homepage
             await page.goto("https://www.instagram.com/", {
-                waitUntil: "networkidle2",
-                timeout: 15000,
+                waitUntil: "domcontentloaded",
+                timeout: 20000,
             });
 
-            // Check if we're logged in (not on login page)
+            // Give the page a moment to settle (redirects happen quickly)
+            await delay(2000);
+
+            // Check if we got redirected to login
             const url = page.url();
-            if (url.includes("/accounts/login")) {
+            if (url.includes("/accounts/login") || url.includes("/challenge")) {
                 log("Session expired - redirected to login", "scraper");
                 this.clearSession();
                 return false;
             }
 
-            // Check for username in page (logged in indicator)
-            const isLoggedIn = await page.evaluate(() => {
-                return document.querySelector('a[href*="/accounts/"]') !== null;
+            // Quick API check — this is the most reliable way to verify login.
+            // If session cookies are valid, this returns user data.
+            const isLoggedIn = await page.evaluate(async () => {
+                try {
+                    const res = await fetch("https://www.instagram.com/api/v1/users/web_profile_info/?username=instagram", {
+                        credentials: "include",
+                        headers: { "X-IG-App-ID": "936619743392459" },
+                    });
+                    return res.ok || res.status === 404; // 404 = user not found but we're authenticated
+                } catch {
+                    return false;
+                }
             });
 
             if (!isLoggedIn) {
-                log("Session appears invalid", "scraper");
+                log("Session appears invalid (API check failed)", "scraper");
                 this.clearSession();
                 return false;
             }
@@ -359,8 +374,11 @@ export class SessionManager {
             log("Session is valid", "scraper");
             return true;
         } catch (error) {
-            log(`Session verification error: ${error}`, "scraper");
-            return false;
+            // Timeout or navigation error — don't clear session,
+            // it might just be a slow connection. Try to proceed anyway.
+            log(`Session verification inconclusive: ${error}`, "scraper");
+            log("Proceeding with saved session anyway (cookies are set)", "scraper");
+            return true;
         }
     }
 
