@@ -1,15 +1,31 @@
+# ==========================================
+# Stage 1: Build
+# ==========================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies (including dev dependencies for build)
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# ==========================================
+# Stage 2: Production
+# ==========================================
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package info
+# Install ONLY production dependencies
 COPY package*.json ./
-
-# Install ONLY production dependencies (super fast, no dev tools)
 RUN npm install --omit=dev --legacy-peer-deps
 
-# Copy the ALREADY BUILT app
-COPY . .
+# Copy built app from builder stage
+COPY --from=builder /app/dist ./dist
 
 # Install Chromium and dependencies for Puppeteer
 RUN apk add --no-cache \
