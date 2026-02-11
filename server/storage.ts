@@ -7,6 +7,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
   // Giveaway methods
@@ -88,12 +89,20 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.googleId === googleId,
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = {
       ...insertUser,
       id,
-      username: username ?? null,
+      username: insertUser.username || null,
+      googleId: insertUser.googleId || null,
+      password: insertUser.password || null,
       createdAt: new Date()
     };
     this.users.set(id, user);

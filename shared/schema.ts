@@ -6,9 +6,10 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   firstName: text("first_name").notNull(),
-  username: text("username").unique(), // Make optional
+  username: text("username").unique(),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"), // Nullable for OAuth users
+  googleId: text("google_id").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -37,6 +38,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   firstName: true,
   password: true,
   email: true,
+  username: true,
+  googleId: true,
 });
 
 export const insertGiveawaySchema = createInsertSchema(giveaways).pick({
