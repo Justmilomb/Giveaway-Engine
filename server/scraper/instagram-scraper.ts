@@ -5,6 +5,7 @@ import { log } from "../log";
 import { ProxyManager, ProxyConfig } from "./proxy-manager";
 import { SessionManager } from "./session-manager";
 import { InstagramComment, FetchCommentsResult } from "../instagram";
+import { InstagramApiClient } from "./instagram-api-client";
 
 // Add stealth plugin to evade detection
 puppeteer.use(StealthPlugin());
@@ -255,8 +256,12 @@ export class InstagramScraper {
                     const canScroll = htmlEl.scrollHeight > htmlEl.clientHeight + 50;
                     if (!canScroll) continue;
                     
-                    // Check if this element contains comments
-                    const hasProfileLinks = htmlEl.querySelectorAll('a[href^="/"][href$="/"]').length > 3;
+                    // Check if this element contains comments (use same selector as extraction)
+                    const profileLinks = htmlEl.querySelectorAll('a[href^="/"]');
+                    const hasProfileLinks = Array.from(profileLinks).filter(a => {
+                        const h = a.getAttribute('href') || '';
+                        return !h.includes('/p/') && !h.includes('/reel/') && !h.includes('/tv/') && h.length > 1;
+                    }).length > 3;
                     const hasUsernamePattern = /@[a-zA-Z0-9._]+/.test(htmlEl.textContent || '');
                     
                     if (hasProfileLinks || hasUsernamePattern) {
@@ -441,9 +446,34 @@ export class InstagramScraper {
             const usernamePattern = /^[a-zA-Z0-9._]{1,30}$/;
             const timestampPattern = /^(Edited\s*•?\s*)?\d+\s*[hdwm]$/i;
 
-            // Strategy 1: DOM-based extraction from comment items
-            const commentItems = document.querySelectorAll('ul li, article div');
-            
+            // Strategy 1: DOM-based extraction from comment containers
+            // Find <ul> elements that contain at least 2 profile links (comment lists)
+            const allUls = document.querySelectorAll('ul');
+            const commentContainers: Element[] = [];
+            for (const ul of allUls) {
+                const profileLinks = ul.querySelectorAll('a[href^="/"]');
+                const realProfileLinks = Array.from(profileLinks).filter(a => {
+                    const h = a.getAttribute('href') || '';
+                    return !h.includes('/p/') && !h.includes('/reel/') && !h.includes('/tv/') && h.length > 1;
+                });
+                if (realProfileLinks.length >= 2) {
+                    commentContainers.push(ul);
+                }
+            }
+            // Extract from <li> children of comment containers
+            const commentItems: Element[] = [];
+            for (const container of commentContainers) {
+                const lis = container.querySelectorAll(':scope > li');
+                for (const li of lis) commentItems.push(li);
+            }
+            // Fallback: if no comment containers found, try direct li with profile links
+            if (commentItems.length === 0) {
+                const allLis = document.querySelectorAll('li');
+                for (const li of allLis) {
+                    if (li.querySelector('a[href^="/"]')) commentItems.push(li);
+                }
+            }
+
             for (const item of commentItems) {
                 // Look for username link
                 const usernameLink = item.querySelector('a[href^="/"]');
@@ -456,18 +486,24 @@ export class InstagramScraper {
                 let username = href.replace(/^\//, '').replace(/\/$/, '').split('/')[0];
                 if (!username || username.length > 30 || !usernamePattern.test(username)) continue;
 
-                // Look for comment text near the username
+                // Look for comment text near the username — skip UI elements
                 let text = '';
-                const nearbyElements = Array.from(item.querySelectorAll('span, div'));
-                
+                const nearbyElements = Array.from(item.querySelectorAll('span'));
+
                 for (const el of nearbyElements) {
+                    // Skip spans inside buttons, time elements, and links (UI chrome)
+                    const parent = el.parentElement;
+                    if (parent && (parent.tagName === 'BUTTON' || parent.tagName === 'TIME' || parent.tagName === 'A')) continue;
+                    if (el.closest('button') || el.closest('time')) continue;
+
                     const elText = (el.textContent || '').trim();
                     if (elText.length < 3) continue;
                     if (usernamePattern.test(elText)) continue;
                     if (timestampPattern.test(elText)) continue;
                     if (/^\d+\s*likes?$/i.test(elText)) continue;
-                    if (/^(Reply|View|Load|Like|Save|Share|More)$/i.test(elText)) continue;
-                    
+                    if (/^(Reply|View|Load|Like|Save|Share|More|See translation)$/i.test(elText)) continue;
+                    if (/^View (all\s+)?[\d,]+\s+(comments?|replies?)$/i.test(elText)) continue;
+
                     text = elText;
                     break;
                 }
@@ -503,7 +539,7 @@ export class InstagramScraper {
                 };
 
                 seenKeys.add(key);
-                results.set(username, comment);
+                results.set(key, comment);
             }
 
             // Strategy 2: Parse from body text
@@ -528,7 +564,7 @@ export class InstagramScraper {
                             if (!seenKeys.has(key)) {
                                 seenKeys.add(key);
                                 const id = `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-                                results.set(currentUsername, {
+                                results.set(key, {
                                     id: id,
                                     username: currentUsername,
                                     text,
@@ -537,7 +573,7 @@ export class InstagramScraper {
                                 });
                             }
                         }
-                        
+
                         currentUsername = line;
                         currentText = [];
                         i++;
@@ -555,7 +591,7 @@ export class InstagramScraper {
                             if (!seenKeys.has(key)) {
                                 seenKeys.add(key);
                                 const id = `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-                                results.set(currentUsername, {
+                                results.set(key, {
                                     id: id,
                                     username: currentUsername,
                                     text,
@@ -581,8 +617,9 @@ export class InstagramScraper {
                 const text = currentText.join(' ').trim();
                 const key = `${currentUsername.toLowerCase()}:${text.substring(0, 50).toLowerCase()}`;
                 if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
                     const id = `${currentUsername}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-                    results.set(currentUsername, {
+                    results.set(key, {
                         id: id,
                         username: currentUsername,
                         text,
@@ -615,85 +652,83 @@ export class InstagramScraper {
     }
 
     /**
-     * FIXED: enhanced API response extraction with more patterns
+     * Extract comments from Instagram API response data.
+     * Uses depth limiting, visited-object tracking, and explicit container keys
+     * to avoid infinite recursion on circular/deeply nested structures.
      */
     private extractCommentsFromApiResponse(data: any): InstagramComment[] {
         const comments: InstagramComment[] = [];
-        
-        const findComments = (obj: any, path: string = ''): void => {
-            if (!obj || typeof obj !== 'object') return;
-            
-            // Array - recurse
+        const visited = new WeakSet<object>();
+        const MAX_DEPTH = 10;
+
+        // Only recurse into these known Instagram API container keys
+        const CONTAINER_KEYS = [
+            'data', 'shortcode_media', 'xdt_shortcode_media',
+            'edge_media_to_comment', 'edge_media_to_parent_comment',
+            'edge_threaded_comments', 'edges', 'node',
+            'comments', 'items', 'page_info',
+        ];
+
+        const extractComment = (obj: any): boolean => {
+            // Pattern 1: v1 API — { user: { username }, text }
+            if (obj.user && typeof obj.user === 'object' && obj.user.username && obj.text) {
+                comments.push({
+                    id: String(obj.pk || obj.id || `${obj.user.username}_${Date.now()}_${Math.random().toString(36).substring(7)}`),
+                    username: obj.user.username,
+                    text: obj.text,
+                    timestamp: obj.created_at ? new Date(obj.created_at * 1000).toISOString() : new Date().toISOString(),
+                    likes: obj.comment_like_count || obj.like_count || 0,
+                    avatar: obj.user.profile_pic_url || undefined,
+                });
+                return true;
+            }
+            // Pattern 2: GraphQL — { owner: { username }, text }
+            if (obj.owner && typeof obj.owner === 'object' && obj.owner.username && obj.text) {
+                comments.push({
+                    id: String(obj.id || obj.pk || `${obj.owner.username}_${Date.now()}_${Math.random().toString(36).substring(7)}`),
+                    username: obj.owner.username,
+                    text: obj.text,
+                    timestamp: obj.created_at ? new Date(obj.created_at * 1000).toISOString() : new Date().toISOString(),
+                    likes: obj.edge_liked_by?.count || obj.like_count || 0,
+                    avatar: obj.owner.profile_pic_url || undefined,
+                });
+                return true;
+            }
+            return false;
+        };
+
+        const findComments = (obj: any, depth: number): void => {
+            if (!obj || typeof obj !== 'object' || depth > MAX_DEPTH) return;
+            if (visited.has(obj)) return;
+            visited.add(obj);
+
             if (Array.isArray(obj)) {
                 for (const item of obj) {
-                    findComments(item, path);
+                    findComments(item, depth + 1);
                 }
                 return;
             }
-            
-            // Pattern 1: Direct comment object with owner and text
-            if (obj.owner && obj.text && typeof obj.owner === 'object') {
-                const username = obj.owner.username || obj.user?.username;
-                if (username && obj.text) {
-                    comments.push({
-                        id: obj.id || obj.pk || `${username}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-                        username: username,
-                        text: obj.text,
-                        timestamp: obj.created_at || obj.timestamp || new Date().toISOString(),
-                        likes: obj.like_count || obj.likes_count || 0,
-                        avatar: obj.owner?.profile_pic_url || obj.user?.profile_pic_url || undefined,
-                    });
-                }
-            }
-            
-            // Pattern 2: GraphQL edge_media_to_comment structure
-            if (obj.edge_media_to_comment?.edges) {
-                for (const edge of obj.edge_media_to_comment.edges) {
-                    if (edge.node) {
-                        const node = edge.node;
-                        const username = node.owner?.username || node.user?.username;
-                        if (username && node.text) {
-                            comments.push({
-                                id: node.id || `${username}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-                                username: username,
-                                text: node.text,
-                                timestamp: node.created_at || node.timestamp || new Date().toISOString(),
-                                likes: node.edge_liked_by?.count || node.like_count || 0,
-                                avatar: node.owner?.profile_pic_url || node.user?.profile_pic_url || undefined,
-                            });
-                        }
-                        
-                        if (node.edge_threaded_comments?.edges) {
-                            findComments(node, path + '.edge_threaded_comments');
-                        }
-                    }
-                }
-            }
-            
-            // Pattern 3-6: Common API structures
-            if (obj.comments && Array.isArray(obj.comments)) {
-                findComments(obj.comments, path + '.comments');
-            }
-            if (obj.items && Array.isArray(obj.items)) {
-                findComments(obj.items, path + '.items');
-            }
-            if (obj.data) {
-                findComments(obj.data, path + '.data');
-            }
-            if (obj.page_info?.edges) {
-                findComments(obj.page_info.edges, path + '.page_info.edges');
+
+            // Try to extract a comment from this object; if successful, only
+            // recurse into threaded replies — don't recurse into comment properties
+            if (extractComment(obj)) {
+                // Still check for threaded replies within this comment
+                if (obj.edge_threaded_comments) findComments(obj.edge_threaded_comments, depth + 1);
+                if (obj.preview_child_comments) findComments(obj.preview_child_comments, depth + 1);
+                if (obj.child_comments) findComments(obj.child_comments, depth + 1);
+                return;
             }
 
-            // Recursively check all properties
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key) && key !== '__proto__' && key !== 'constructor') {
-                    findComments(obj[key], `${path}.${key}`);
+            // Not a comment — recurse only into known container keys
+            for (const key of CONTAINER_KEYS) {
+                if (obj[key] !== undefined) {
+                    findComments(obj[key], depth + 1);
                 }
             }
         };
-        
-        findComments(data);
-        
+
+        findComments(data, 0);
+
         // Deduplicate
         const unique = new Map<string, InstagramComment>();
         for (const comment of comments) {
@@ -702,7 +737,7 @@ export class InstagramScraper {
                 unique.set(key, comment);
             }
         }
-        
+
         return Array.from(unique.values());
     }
 
@@ -754,24 +789,28 @@ export class InstagramScraper {
             page.on('response', async (response) => {
                 const url = response.url();
                 const status = response.status();
-                
+
                 if (status < 200 || status >= 400) return;
 
+                // Must be from Instagram
+                if (!url.includes('instagram.com') && !url.includes('cdninstagram.com')) return;
+
+                // Content-type guard: only parse JSON responses
+                const contentType = response.headers()['content-type'] || '';
+                if (!contentType.includes('json') && !contentType.includes('text')) return;
+
                 // Check for Instagram API endpoints
-                const isInstagramApi = 
-                    url.includes('graphql') || 
-                    url.includes('/api/v1/') || 
-                    url.includes('/api/graphql/') || 
+                const isInstagramApi =
+                    url.includes('/graphql') ||
+                    url.includes('/api/v1/') ||
+                    url.includes('/api/graphql') ||
                     url.includes('query_hash') ||
-                    url.includes('comments') || 
-                    url.includes('edge_media_to_comment') ||
-                    (url.includes('instagram.com') && url.includes('/api/')) ||
-                    url.includes('/web/');
+                    (url.includes('/api/') && url.includes('comments'));
 
                 if (!isInstagramApi) return;
 
                 try {
-                    const responseText = await response.text();
+                    const responseText = await response.text().catch(() => null);
                     if (!responseText || responseText.length < 50) return;
                     
                     let data: any;
@@ -809,36 +848,59 @@ export class InstagramScraper {
             await page.goto(postUrl, { waitUntil: "networkidle2", timeout: 60000 });
             await this.randomDelay(2000, 3000);
 
-            // Initial button clicking
-            log("Looking for 'View all comments' buttons...", "scraper");
-            await this.clickLoadMoreButtons(page);
-            await this.randomDelay(1000, 1500);
-            await this.clickLoadMoreButtons(page);
-
-            // Phase 1: Scroll to capture API responses (optimized)
-            log("Phase 1: Scrolling to capture API responses...", "scraper");
-            await this.scrollCommentsSection(page, capturedComments, lastApiResponseTime, this.config.maxScrolls, targetCommentCount);
-
-            // Phase 2: Check results and extract from DOM if needed
-            const apiCommentCount = capturedComments.size;
-            log(`API captured ${apiCommentCount} comments`, "scraper");
-
-            let domComments: InstagramComment[] = [];
-            if (apiCommentCount < targetCommentCount) {
-                log("Phase 2: Extracting comments from DOM...", "scraper");
-                await this.randomDelay(1000, 1500);
-                domComments = await this.extractComments(page);
-                log(`DOM extracted ${domComments.length} comments`, "scraper");
+            // ── Phase 1: Direct API extraction (fastest path) ─────────────
+            const apiClient = new InstagramApiClient();
+            let directApiCount = 0;
+            try {
+                const directResult = await apiClient.fetchComments(page, postUrl, targetCommentCount);
+                for (const comment of directResult.comments) {
+                    const key = `${comment.username}:${comment.text.substring(0, 50)}`;
+                    if (!capturedComments.has(key)) {
+                        capturedComments.set(key, comment);
+                    }
+                }
+                directApiCount = directResult.comments.length;
+                log(`Phase 1 complete: Direct API got ${directApiCount} comments (map: ${capturedComments.size})`, "scraper");
+            } catch (err) {
+                log(`Phase 1 direct API failed: ${err instanceof Error ? err.message : err}`, "scraper");
             }
 
-            // Merge comments
+            // Skip scroll+DOM when direct API returned results (scroll/DOM adds near-zero in practice)
+            const skipScroll = directApiCount > 0;
+            if (skipScroll) {
+                log(`Skipping scroll/DOM phase — direct API got ${capturedComments.size} comments`, "scraper");
+            }
+
+            let domComments: InstagramComment[] = [];
+            if (!skipScroll) {
+                // ── Phase 2: Scroll + network interception fallback ───────
+                // Initial button clicking
+                log("Looking for 'View all comments' buttons...", "scraper");
+                await this.clickLoadMoreButtons(page);
+                await this.randomDelay(1000, 1500);
+                await this.clickLoadMoreButtons(page);
+
+                log("Phase 2: Scrolling to capture API responses...", "scraper");
+                await this.scrollCommentsSection(page, capturedComments, lastApiResponseTime, this.config.maxScrolls, targetCommentCount);
+
+                // ── Phase 3: DOM extraction if still short ────────────────
+                if (capturedComments.size < targetCommentCount) {
+                    log("Phase 3: Extracting comments from DOM...", "scraper");
+                    await this.randomDelay(1000, 1500);
+                    domComments = await this.extractComments(page);
+                    log(`DOM extracted ${domComments.length} comments`, "scraper");
+                }
+            }
+
+            // Merge all comments
             const allComments = Array.from(capturedComments.values());
-            const domOnly = new Set<string>(Array.from(capturedComments.keys()));
+            const existingKeys = new Set<string>(Array.from(capturedComments.keys()));
 
             for (const domComment of domComments) {
                 const key = `${domComment.username}:${domComment.text.substring(0, 50)}`;
-                if (!domOnly.has(key)) {
+                if (!existingKeys.has(key)) {
                     allComments.push(domComment);
+                    existingKeys.add(key);
                 }
             }
 
@@ -855,7 +917,7 @@ export class InstagramScraper {
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
             await page.close();
 
-            log(`✓ Extraction complete in ${elapsed}s. Total comments: ${comments.length} (API: ${apiCommentCount}, DOM: ${domComments.length})`, "scraper");
+            log(`✓ Extraction complete in ${elapsed}s. Total comments: ${comments.length} (DirectAPI: ${directApiCount}, NetworkAPI: ${capturedComments.size - directApiCount}, DOM: ${domComments.length})`, "scraper");
 
             return {
                 comments,

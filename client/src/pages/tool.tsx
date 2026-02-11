@@ -128,7 +128,7 @@ export default function GiveawayTool() {
         });
         setValidEntries(initialValid);
 
-        toast({ title: "Demo Mode", description: `Loaded ${entries.length} sample entries` });
+        toast({ title: "Demo Mode", description: `Loaded ${entries.length > 200 ? "200+" : entries.length} sample entries` });
       } catch (error) {
         setFetchError(error instanceof Error ? error.message : "Unknown error");
         setStep("input");
@@ -200,7 +200,7 @@ export default function GiveawayTool() {
 
       toast({
         title: "Success!",
-        description: `Loaded ${entries.length} comments from Instagram`
+        description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`
       });
 
     } catch (error) {
@@ -528,7 +528,7 @@ export default function GiveawayTool() {
                   <h2 className="text-xl sm:text-2xl font-bold uppercase">Filter Entries</h2>
                   <div className="flex flex-col items-end">
                     <span className="text-xs sm:text-sm text-muted-foreground font-bold">Total Found</span>
-                    <span className="text-lg sm:text-xl font-black">{fetchedEntries.length}</span>
+                    <span className="text-lg sm:text-xl font-black">{fetchedEntries.length > 200 ? "200+" : fetchedEntries.length}</span>
                   </div>
                 </div>
 
@@ -689,7 +689,7 @@ export default function GiveawayTool() {
                 <div className="border-t-2 border-black pt-6">
                   <div className="bg-accent text-white p-4 border-2 border-black mb-6 flex justify-between items-center shadow-[4px_4px_0px_0px_#000000]">
                     <span className="font-bold text-lg uppercase">Valid Candidates</span>
-                    <span className="font-black text-3xl">{validEntries.length}</span>
+                    <span className="font-black text-3xl">{validEntries.length > 200 ? "200+" : validEntries.length}</span>
                   </div>
 
                   {/* Winning Emails Toggle */}
@@ -936,7 +936,7 @@ export default function GiveawayTool() {
               >
                 <div className="text-center px-4">
                   <h2 className="text-2xl sm:text-4xl md:text-5xl font-black uppercase mb-2">🎉 Winners! 🎉</h2>
-                  <p className="font-medium text-sm sm:text-lg text-muted-foreground">Certified Random Selection from {validEntries.length} entries.</p>
+                  <p className="font-medium text-sm sm:text-lg text-muted-foreground">Certified Random Selection from {validEntries.length > 200 ? "200+" : validEntries.length} entries.</p>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
