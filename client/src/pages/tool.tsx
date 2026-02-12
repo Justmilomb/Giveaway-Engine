@@ -18,8 +18,38 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { SEO } from "@/components/seo";
 import { AdBanner } from "@/components/AdBanner";
+import { Elements } from "@stripe/react-stripe-js";
+import { CheckoutForm } from "@/components/checkout-form";
+import { getStripe } from "@/lib/stripe";
 
 import { useLocation } from "wouter";
+
+const stripeAppearance = {
+  theme: "flat" as const,
+  variables: {
+    colorPrimary: "#000000",
+    colorBackground: "#ffffff",
+    colorText: "#000000",
+    fontFamily: "inherit",
+    borderRadius: "0px",
+    fontWeightNormal: "700",
+  },
+  rules: {
+    ".Input": {
+      border: "2px solid #000000",
+      boxShadow: "3px 3px 0px 0px rgba(0,0,0,1)",
+      padding: "12px",
+    },
+    ".Input:focus": {
+      border: "2px solid #E1306C",
+      boxShadow: "3px 3px 0px 0px rgba(225,48,108,1)",
+    },
+    ".Label": {
+      fontWeight: "700",
+      textTransform: "uppercase" as const,
+    },
+  },
+};
 
 // Entry type for comments
 interface Entry {
@@ -39,6 +69,8 @@ export default function GiveawayTool() {
   const [url, setUrl] = useState("");
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
 
 
   // Rules State
@@ -98,30 +130,48 @@ export default function GiveawayTool() {
     setStep("payment");
   };
 
-  // Process payment and fetch comments
-  const handleProcessPayment = async () => {
-    setIsProcessingPayment(true);
-
+  // Step 1: Create a Stripe PaymentIntent and show card form
+  const handleCreatePaymentIntent = async () => {
+    setIsCreatingIntent(true);
     try {
-      // Step 1: Process payment
-      const paymentRes = await fetch("/api/payment/process", {
+      const res = await fetch("/api/payment/create-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 500, url }), // £5.00 in pence
+        body: JSON.stringify({ url }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create payment");
+      setClientSecret(data.clientSecret);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start payment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingIntent(false);
+    }
+  };
 
-      const paymentData = await paymentRes.json();
+  // Step 2: After Stripe confirms the card, verify server-side and fetch comments
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    setIsProcessingPayment(true);
+    try {
+      // Confirm with our backend to get a payment token
+      const confirmRes = await fetch("/api/payment/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || "Payment verification failed");
 
-      if (!paymentRes.ok) {
-        throw new Error(paymentData.error || "Payment failed");
-      }
-
-      const token = paymentData.paymentToken;
+      const token = confirmData.paymentToken;
       setPaymentToken(token);
 
       toast({ title: "Payment Successful", description: "Fetching comments..." });
 
-      // Step 2: Fetch comments with the payment token
+      // Now fetch comments with the payment token
       setStep("fetching");
 
       const response = await fetch("/api/instagram/comments", {
@@ -131,10 +181,7 @@ export default function GiveawayTool() {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch comments");
-      }
+      if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
 
       const entries = (data.entries || []).map((entry: any) => ({
         ...entry,
@@ -150,15 +197,14 @@ export default function GiveawayTool() {
         requireMention: false,
         duplicates: true,
         blockList: blockList,
-        excludeFraud: excludeFraud
+        excludeFraud: excludeFraud,
       });
       setValidEntries(initialValid);
 
       toast({
         title: "Success!",
-        description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`
+        description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
       });
-
     } catch (error) {
       console.error("Payment/Fetch error:", error);
       setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
@@ -166,10 +212,11 @@ export default function GiveawayTool() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Payment or fetch failed",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsProcessingPayment(false);
+      setClientSecret(null);
     }
   };
 
@@ -305,6 +352,7 @@ export default function GiveawayTool() {
     setValidEntries([]);
     setFetchError(null);
     setPaymentToken(null);
+    setClientSecret(null);
   };
 
   const handleSetScheduleTime = () => {
@@ -774,37 +822,44 @@ export default function GiveawayTool() {
                           ✓ Download winner announcement image
                         </p>
                       </div>
-
-                      <div className="space-y-2">
-                        <div className="p-4 border-2 border-slate-200 rounded bg-slate-50 text-center">
-                          <span className="text-slate-500 font-medium">🔒 Secure payment via Stripe</span>
-                        </div>
-                      </div>
                     </div>
 
-                    <Button
-                      onClick={handleProcessPayment}
-                      disabled={isProcessingPayment}
-                      className="w-full neo-btn-primary bg-[#E1306C] hover:bg-[#C13584] text-white text-xl py-6"
-                    >
-                      {isProcessingPayment ? (
-                        <>
-                          <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Pay £5.00 & Fetch Comments"
-                      )}
-                    </Button>
+                    {clientSecret ? (
+                      <Elements
+                        stripe={getStripe()}
+                        options={{ clientSecret, appearance: stripeAppearance }}
+                      >
+                        <CheckoutForm
+                          onSuccess={handlePaymentSuccess}
+                          onCancel={() => { setClientSecret(null); setStep("input"); }}
+                        />
+                      </Elements>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={handleCreatePaymentIntent}
+                          disabled={isCreatingIntent}
+                          className="w-full neo-btn-primary bg-[#E1306C] hover:bg-[#C13584] text-white text-xl py-6"
+                        >
+                          {isCreatingIntent ? (
+                            <>
+                              <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            "Pay £5.00 & Fetch Comments"
+                          )}
+                        </Button>
 
-                    <Button
-                      variant="ghost"
-                      onClick={() => setStep("input")}
-                      className="w-full mt-2"
-                      disabled={isProcessingPayment}
-                    >
-                      Back to URL Input
-                    </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setStep("input")}
+                          className="w-full mt-2"
+                        >
+                          Back to URL Input
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
               </motion.div>

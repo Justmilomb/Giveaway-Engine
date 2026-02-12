@@ -33,9 +33,16 @@ export class InstagramApiClient {
         // Accumulate comments across both API methods
         const allComments = new Map<string, InstagramComment>();
 
+        // Extract media ID early — needed for v1 API and doc_id POST fallback
+        let mediaId: string | null = null;
+        try {
+            mediaId = await this.extractMediaId(page);
+            if (mediaId) log(`Extracted mediaId: ${mediaId}`, "scraper");
+        } catch { /* ignore */ }
+
         // Step 1: GraphQL (primary — fastest, gets the most comments)
         try {
-            const result = await this.fetchViaGraphQL(page, shortcode, targetCount, deadline);
+            const result = await this.fetchViaGraphQL(page, shortcode, targetCount, deadline, mediaId);
             for (const c of result.comments) {
                 const key = `${c.username}:${c.text.substring(0, 50)}`;
                 if (!allComments.has(key)) allComments.set(key, c);
@@ -48,7 +55,6 @@ export class InstagramApiClient {
         // Step 2: v1 REST API supplement (only if time remains and need more)
         if (allComments.size < targetCount && Date.now() < deadline) {
             try {
-                const mediaId = await this.extractMediaId(page);
                 if (mediaId) {
                     const remaining = targetCount - allComments.size;
                     log(`v1 API supplement (mediaId=${mediaId}, need ${remaining} more, ${Math.round((deadline - Date.now()) / 1000)}s left)`, "scraper");
@@ -114,15 +120,24 @@ export class InstagramApiClient {
     private async igFetch(page: Page, url: string): Promise<any> {
         return page.evaluate(async (fetchUrl: string) => {
             try {
+                // Extract CSRF token from cookies
+                const csrfMatch = document.cookie.match(/csrftoken=([^;]+)/);
+                const csrfToken = csrfMatch ? csrfMatch[1] : "";
+
                 const res = await fetch(fetchUrl, {
                     credentials: "include",
                     headers: {
                         "X-Requested-With": "XMLHttpRequest",
                         "X-IG-App-ID": "936619743392459",
+                        "X-CSRFToken": csrfToken,
+                        "X-ASBD-ID": "129477",
                     },
                 });
                 if (!res.ok) return null;
-                return res.json();
+                const text = await res.text();
+                // Guard against HTML responses (login/consent pages)
+                if (text.startsWith("<!") || text.startsWith("<html")) return null;
+                return JSON.parse(text);
             } catch {
                 return null;
             }
@@ -162,9 +177,14 @@ export class InstagramApiClient {
     private async igGraphqlPost(page: Page, docId: string, variables: Record<string, any>): Promise<any> {
         return page.evaluate(async (params: { docId: string; variables: string }) => {
             try {
+                // Extract CSRF token from cookies
+                const csrfMatch = document.cookie.match(/csrftoken=([^;]+)/);
+                const csrfToken = csrfMatch ? csrfMatch[1] : "";
+
                 const body = new URLSearchParams({
                     doc_id: params.docId,
                     variables: params.variables,
+                    fb_api_req_friendly_name: "CommentsMediaQuery",
                 });
                 const res = await fetch("https://www.instagram.com/api/graphql", {
                     method: "POST",
@@ -173,23 +193,38 @@ export class InstagramApiClient {
                         "Content-Type": "application/x-www-form-urlencoded",
                         "X-Requested-With": "XMLHttpRequest",
                         "X-IG-App-ID": "936619743392459",
+                        "X-CSRFToken": csrfToken,
+                        "X-ASBD-ID": "129477",
                         "X-FB-Friendly-Name": "CommentsMediaQuery",
                     },
                     body: body.toString(),
                 });
-                if (!res.ok) return null;
-                return res.json();
-            } catch {
-                return null;
+                if (!res.ok) {
+                    return { __error: `HTTP ${res.status}`, __preview: "" };
+                }
+                const text = await res.text();
+                // Guard against HTML responses (login/consent pages)
+                if (text.startsWith("<!") || text.startsWith("<html")) {
+                    return { __error: "HTML response", __preview: text.substring(0, 100) };
+                }
+                return JSON.parse(text);
+            } catch (e: any) {
+                return { __error: e?.message || "unknown", __preview: "" };
             }
         }, { docId, variables: JSON.stringify(variables) });
+    }
+
+    /** Check if response is a real data response vs our error sentinel */
+    private isErrorResponse(data: any): boolean {
+        return data && typeof data === "object" && "__error" in data;
     }
 
     private async fetchViaGraphQL(
         page: Page,
         shortcode: string,
         targetCount: number,
-        deadline: number
+        deadline: number,
+        mediaId?: string | null,
     ): Promise<{ comments: InstagramComment[]; hasMore: boolean }> {
         const allComments = new Map<string, InstagramComment>();
         let endCursor: string | null = null;
@@ -204,9 +239,10 @@ export class InstagramApiClient {
         ];
 
         // doc_ids (POST) for parent comments — newer Instagram API, better pagination
-        const docIds = [
-            "8845758582119845",  // xdt_api__v1__media__media_id__comments__connection
-            "7585356228199498",  // CommentsMediaQuery
+        // NOTE: These currently return HTML responses; kept for future use if Instagram fixes them
+        const docIds: string[] = [
+            // "8845758582119845",  // xdt_api__v1__media__media_id__comments__connection
+            // "7585356228199498",  // CommentsMediaQuery
         ];
 
         // Query hash for threaded (reply) comments
@@ -218,6 +254,12 @@ export class InstagramApiClient {
         // Track which method works so we can stick with it
         let useDocId: string | null = null;
         let useQueryHash: string | null = null;
+
+        // Check if CSRF token is available before starting
+        const hasCsrf = await page.evaluate(() => {
+            return document.cookie.includes("csrftoken=");
+        });
+        log(`GraphQL: CSRF token ${hasCsrf ? "found" : "MISSING"} in cookies`, "scraper");
 
         // ── Phase A: Fetch all parent comments ────────────────────────
         for (let pageNum = 0; pageNum < MAX_PAGES && hasNext && Date.now() < deadline; pageNum++) {
@@ -234,9 +276,13 @@ export class InstagramApiClient {
                     if (endCursor) variables.after = endCursor;
 
                     data = await this.igGraphqlPost(page, docId, variables);
-                    if (data) {
+                    if (data && !this.isErrorResponse(data)) {
                         useDocId = docId;
                         break;
+                    }
+                    if (this.isErrorResponse(data)) {
+                        log(`doc_id[${docId}] Phase A: ${data.__error}`, "scraper");
+                        data = null;
                     }
                 }
             }
@@ -264,7 +310,11 @@ export class InstagramApiClient {
             }
 
             if (!data) {
-                log(`GraphQL page ${pageNum + 1}: no response from any endpoint`, "scraper");
+                if (pageNum === 0) {
+                    log(`GraphQL page 1: all endpoints returned null (HTML or error). CSRF token may be missing.`, "scraper");
+                } else {
+                    log(`GraphQL page ${pageNum + 1}: no response from any endpoint`, "scraper");
+                }
                 break;
             }
 
@@ -335,7 +385,7 @@ export class InstagramApiClient {
             );
 
             if (allComments.size >= targetCount) break;
-            await new Promise((r) => setTimeout(r, 250 + Math.random() * 350));
+            await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
         }
 
         // If query_hash capped out early but we haven't tried doc_id yet, try it
@@ -348,11 +398,18 @@ export class InstagramApiClient {
                 if (!docIdHasNext || Date.now() >= deadline) break;
 
                 for (let pageNum = 0; pageNum < MAX_PAGES && docIdHasNext && Date.now() < deadline; pageNum++) {
+                    // Try both shortcode and media_id variable formats
                     const variables: Record<string, any> = { shortcode, first: PER_PAGE };
+                    if (mediaId) variables.media_id = mediaId;
                     if (docIdCursor) variables.after = docIdCursor;
 
+                    log(`doc_id[${docId}] attempt page ${pageNum + 1}, cursor=${docIdCursor ? docIdCursor.substring(0, 20) + '...' : 'none'}`, "scraper");
                     const data = await this.igGraphqlPost(page, docId, variables);
-                    if (!data) break;
+                    if (!data || this.isErrorResponse(data)) {
+                        const errMsg = data?.__error || "null response";
+                        log(`doc_id[${docId}] failed: ${errMsg}`, "scraper");
+                        break;
+                    }
 
                     const media =
                         data?.data?.shortcode_media ??
@@ -408,7 +465,7 @@ export class InstagramApiClient {
                     }
 
                     if (allComments.size >= targetCount) break;
-                    await new Promise((r) => setTimeout(r, 250 + Math.random() * 350));
+                    await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
                 }
                 if (allComments.size > 0) break; // found a working doc_id
             }
@@ -465,7 +522,7 @@ export class InstagramApiClient {
                     }
 
                     if (allComments.size >= targetCount || newCount === 0) break;
-                    await new Promise((r) => setTimeout(r, 200 + Math.random() * 300));
+                    await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
                 }
             }
         }
@@ -539,7 +596,7 @@ export class InstagramApiClient {
             );
 
             if (allComments.size >= targetCount) break;
-            await new Promise((r) => setTimeout(r, 300 + Math.random() * 400));
+            await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
         }
 
         // ── Phase B: fetch child comment threads ──────────────────────
@@ -579,7 +636,7 @@ export class InstagramApiClient {
                     }
 
                     if (allComments.size >= targetCount) break;
-                    await new Promise((r) => setTimeout(r, 200 + Math.random() * 300));
+                    await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
                 }
             }
         }
@@ -622,7 +679,7 @@ export class InstagramApiClient {
 
             // Small delay between requests to avoid rate limiting
             if (i < userIds.length - 1) {
-                await new Promise((r) => setTimeout(r, 200 + Math.random() * 300));
+                await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
             }
         }
 

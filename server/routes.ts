@@ -9,6 +9,12 @@ import { InstagramScraper } from "./scraper/instagram-scraper";
 import { setupAuth } from "./auth";
 import { log } from "./log";
 import { format } from "date-fns";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+// Track PaymentIntent IDs to prevent double-redemption
+const redeemedPaymentIntents = new Set<string>();
 
 // Security imports — kept: rate limiting, validation, sanitization
 import {
@@ -56,40 +62,75 @@ export async function registerRoutes(
   // PAYMENT ENDPOINTS
   // ============================================
 
-  // Process payment and generate access token
-  // In production, this would integrate with Stripe
-  app.post("/api/payment/process", async (req, res) => {
+  // Expose Stripe publishable key to the frontend
+  app.get("/api/config", (_req, res) => {
+    res.json({
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  });
+
+  // Create a Stripe PaymentIntent
+  app.post("/api/payment/create-intent", async (req, res) => {
     try {
-      const { amount, url } = req.body;
-      const ip = getClientIP(req);
+      const { url } = req.body;
 
-      // Validate the payment amount
-      if (amount !== 500) { // £5.00 in pence
-        return res.status(400).json({ error: "Invalid payment amount" });
-      }
-
-      // Validate URL is provided
       if (!url || typeof url !== "string" || !url.includes("instagram.com")) {
         return res.status(400).json({ error: "Valid Instagram URL required" });
       }
 
-      // TODO: In production, integrate with Stripe here
-      // For now, simulate successful payment and generate token
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 500, // £5.00 in pence
+        currency: "gbp",
+        metadata: { url },
+      });
+
+      return res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      log(`Stripe Create Intent Error: ${error}`, "error");
+      return res.status(500).json({
+        error: "Failed to create payment. Please try again.",
+      });
+    }
+  });
+
+  // Verify payment succeeded and issue a purchase token
+  app.post("/api/payment/confirm", async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      const ip = getClientIP(req);
+
+      if (!paymentIntentId || typeof paymentIntentId !== "string") {
+        return res.status(400).json({ error: "Payment intent ID required" });
+      }
+
+      // Prevent double-redemption
+      if (redeemedPaymentIntents.has(paymentIntentId)) {
+        return res.status(400).json({ error: "This payment has already been redeemed" });
+      }
+
+      // Verify with Stripe that the payment actually succeeded
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.status !== "succeeded") {
+        return res.status(400).json({ error: "Payment has not succeeded" });
+      }
+
+      // Mark as redeemed
+      redeemedPaymentIntents.add(paymentIntentId);
 
       // Generate a one-time use payment token
-      const paymentToken = generatePurchaseToken(1); // 1 API call
+      const paymentToken = generatePurchaseToken(1);
 
-      console.log(`[Payment] Processed £5.00 payment from ${ip}, token: ${paymentToken}`);
+      console.log(`[Payment] Verified Stripe payment ${paymentIntentId} from ${ip}, token: ${paymentToken}`);
 
       return res.json({
         success: true,
-        paymentToken: paymentToken,
-        message: "Payment successful. You can now fetch comments."
+        paymentToken,
       });
     } catch (error) {
-      log(`Payment Error: ${error}`, "error");
+      log(`Stripe Confirm Error: ${error}`, "error");
       return res.status(500).json({
-        error: "Payment processing failed. Please try again."
+        error: "Payment verification failed. Please try again.",
       });
     }
   });
