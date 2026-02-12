@@ -587,7 +587,7 @@ export default function GiveawayTool() {
                   />
                 </div>
                 <p className="text-sm sm:text-base text-muted-foreground font-medium mt-2">Connecting to Instagram...</p>
-                <AdBanner type="adsense" className="mt-8" slot="YOUR_AD_SLOT_ID" />
+                <AdBanner type="adsense" className="mt-8" />
               </motion.div>
             )}
 
@@ -597,8 +597,9 @@ export default function GiveawayTool() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="neo-box p-4 sm:p-8 md:p-12 bg-white space-y-6 sm:space-y-8"
+                className="neo-box p-4 sm:p-8 md:p-12 bg-white flex flex-col lg:flex-row lg:gap-8"
               >
+                <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
                 <div className="flex items-center justify-between border-b-2 border-black pb-4">
                   <h2 className="text-xl sm:text-2xl font-bold uppercase">Filter Entries</h2>
                   <div className="flex flex-col items-end">
@@ -789,6 +790,10 @@ export default function GiveawayTool() {
                       : <><CalendarIcon className="mr-2 w-6 h-6" /> Schedule Spin</>
                     }
                   </Button>
+                </div>
+                </div>
+                <div className="hidden lg:flex shrink-0 flex-col items-center pt-8 lg:pt-0">
+                  <AdBanner type="adsense" format="vertical" className="sticky top-28" />
                 </div>
               </motion.div>
             )}

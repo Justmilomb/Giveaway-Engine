@@ -130,7 +130,7 @@ export default function Home() {
 
         {/* AdSense Banner */}
         <section className="container mx-auto px-4">
-          <AdBanner type="adsense" className="w-full" slot="YOUR_AD_SLOT_ID" />
+          <AdBanner type="adsense" className="w-full" />
         </section>
 
         {/* Steps Section */}

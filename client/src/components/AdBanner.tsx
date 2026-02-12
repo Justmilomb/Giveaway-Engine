@@ -12,6 +12,12 @@ interface AdResponse {
   ad: Ad | null;
 }
 
+/** AdSense slot IDs: horizontal bar (9573154835), vertical (8260073166) */
+const AD_SLOTS = {
+  horizontal: "9573154835",
+  vertical: "8260073166",
+} as const;
+
 interface AdBannerProps {
   slot?: string;
   className?: string;
@@ -21,15 +27,18 @@ interface AdBannerProps {
 }
 
 export function AdBanner({
-  slot = "default",
+  slot,
   className = "",
   format = "horizontal",
   type = "custom",
   adsenseClientId
 }: AdBannerProps) {
+  const adSlot = slot ?? (format === "vertical" ? AD_SLOTS.vertical : AD_SLOTS.horizontal);
+  const adRef = useRef<HTMLDivElement>(null);
+
   // Fetch a random ad (only for custom type)
   const { data, isLoading } = useQuery<AdResponse>({
-    queryKey: ["ad", slot],
+    queryKey: ["ad", slot ?? "default"],
     queryFn: async () => {
       const res = await fetch("/api/ads/random");
       if (!res.ok) throw new Error("Failed to fetch ad");
@@ -41,14 +50,40 @@ export function AdBanner({
   });
 
   useEffect(() => {
-    if (type === "adsense") {
+    if (type !== "adsense") return;
+
+    const container = adRef.current;
+    if (!container) return;
+
+    let pushed = false;
+
+    const tryPush = () => {
+      if (pushed) return;
+      const width = container.offsetWidth;
+      if (width <= 0) return;
       try {
-        // @ts-ignore
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+        (window as any).adsbygoogle.push({});
+        pushed = true;
       } catch (e) {
         console.error("AdSense script error", e);
       }
+    };
+
+    if (container.offsetWidth > 0) {
+      tryPush();
+      return;
     }
+
+    const observer = new ResizeObserver(() => tryPush());
+    observer.observe(container);
+
+    const timeout = setTimeout(tryPush, 150);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeout);
+    };
   }, [type]);
 
   const handleClick = async () => {
@@ -62,17 +97,21 @@ export function AdBanner({
   };
 
   if (type === "adsense") {
-    // Standard AdSense format
+    const isVertical = format === "vertical";
     return (
-      <div className={`overflow-hidden flex justify-center ${className}`}>
+      <div
+        ref={adRef}
+        className={`overflow-hidden flex justify-center ${isVertical ? "w-[160px] min-w-[120px]" : "min-w-[320px] w-full"} ${className}`}
+        style={{ minHeight: isVertical ? 600 : 90 }}
+      >
         <ins
           className="adsbygoogle"
-          style={{ display: 'block' }}
-          data-ad-client={adsenseClientId || "ca-pub-3154339896678246"} // Placeholder
-          data-ad-slot={slot}
+          style={{ display: "block" }}
+          data-ad-client={adsenseClientId || "ca-pub-3154339896678246"}
+          data-ad-slot={adSlot}
           data-ad-format="auto"
           data-full-width-responsive="true"
-        ></ins>
+        />
       </div>
     );
   }
