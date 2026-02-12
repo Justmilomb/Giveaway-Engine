@@ -117,7 +117,7 @@ export default function GiveawayTool() {
     }
   }, [winnerCount, filterKeyword, minMentions, requireMention, excludeDuplicates, blockList, enableBonusChances, excludeFraud]);
 
-  // Handle initial form submission - validates URL and goes to payment (or demo)
+  // Handle initial form submission - fetches comments using free credits (no payment yet)
   const handleFetch = async (e: React.FormEvent) => {
     e.preventDefault();
     setFetchError(null);
@@ -128,61 +128,26 @@ export default function GiveawayTool() {
       return;
     }
 
-    // If url is valid, go to payment step directly (Demo mode removed)
-    setStep("payment");
-  };
-
-  // Step 1: Create a Stripe PaymentIntent and show card form
-  const handleCreatePaymentIntent = async () => {
-    setIsCreatingIntent(true);
+    setStep("fetching");
     try {
-      const res = await fetch("/api/payment/create-intent", {
+      const response = await fetch("/api/instagram/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create payment");
-      setClientSecret(data.clientSecret);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to start payment",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingIntent(false);
-    }
-  };
-
-  // Step 2: After Stripe confirms the card, verify server-side and fetch comments
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
-    setIsProcessingPayment(true);
-    try {
-      // Confirm with our backend to get a payment token
-      const confirmRes = await fetch("/api/payment/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentIntentId }),
-      });
-      const confirmData = await confirmRes.json();
-      if (!confirmRes.ok) throw new Error(confirmData.error || "Payment verification failed");
-
-      const token = confirmData.paymentToken;
-      setPaymentToken(token);
-
-      toast({ title: "Payment Successful", description: "Fetching comments..." });
-
-      // Now fetch comments with the payment token
-      setStep("fetching");
-
-      const response = await fetch("/api/instagram/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, paymentToken: token }),
-      });
 
       const data = await response.json();
+
+      if (response.status === 402) {
+        setStep("payment");
+        toast({
+          title: "Payment Required",
+          description: data.error || "No credits remaining. Complete payment to fetch comments.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
 
       const entries = (data.entries || []).map((entry: any) => ({
@@ -208,12 +173,110 @@ export default function GiveawayTool() {
         description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
       });
     } catch (error) {
-      console.error("Payment/Fetch error:", error);
+      console.error("Fetch error:", error);
       setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
       setStep("input");
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Payment or fetch failed",
+        description: error instanceof Error ? error.message : "Failed to fetch comments",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Step 1: Create a Stripe PaymentIntent and show card form
+  const handleCreatePaymentIntent = async () => {
+    setIsCreatingIntent(true);
+    try {
+      const res = await fetch("/api/payment/create-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create payment");
+      setClientSecret(data.clientSecret);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start payment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingIntent(false);
+    }
+  };
+
+  // After Stripe confirms: fetch comments (if no data), pick winners (instant), or create scheduled giveaway
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    setIsProcessingPayment(true);
+    try {
+      const confirmRes = await fetch("/api/payment/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || "Payment verification failed");
+
+      const token = confirmData.paymentToken;
+      setPaymentToken(token);
+
+      // Case 1: No data yet - fetch comments with token, then go to options
+      if (fetchedEntries.length === 0) {
+        toast({ title: "Payment Successful", description: "Fetching comments..." });
+        setStep("fetching");
+
+        const response = await fetch("/api/instagram/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, paymentToken: token }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
+
+        const entries = (data.entries || []).map((entry: any) => ({
+          ...entry,
+          fraudScore: entry.fraudScore || 0,
+        }));
+
+        setFetchedEntries(entries);
+        setStep("options");
+
+        const initialValid = filterEntries(entries, {
+          keyword: "",
+          mentions: 1,
+          requireMention: false,
+          duplicates: true,
+          blockList: blockList,
+          excludeFraud: excludeFraud,
+        });
+        setValidEntries(initialValid);
+
+        toast({
+          title: "Success!",
+          description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
+        });
+        return;
+      }
+
+      // Case 2: Have data + scheduled - create giveaway with token
+      if (scheduleDate) {
+        await handleConfirmScheduleWithToken(token);
+        return;
+      }
+
+      // Case 3: Have data + instant - pick winners (client-side)
+      toast({ title: "Payment Successful", description: "Picking winners..." });
+      handlePickWinners();
+    } catch (error) {
+      console.error("Payment error:", error);
+      setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
+      setStep(fetchedEntries.length > 0 ? "options" : "input");
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Payment failed",
         variant: "destructive",
       });
     } finally {
@@ -390,7 +453,7 @@ export default function GiveawayTool() {
     toast({ title: "Schedule Cleared", description: "You can now proceed with instant winner generation." });
   };
 
-  const handleConfirmSchedule = async () => {
+  const handleConfirmScheduleWithToken = async (paymentToken: string) => {
     if (!scheduleEmail || !scheduleEmail.includes("@")) {
       toast({ title: "Email Required", description: "Please enter a valid email to receive results.", variant: "destructive" });
       return;
@@ -426,30 +489,27 @@ export default function GiveawayTool() {
       excludeFraud: excludeFraud,
     };
 
-    try {
-      const res = await fetch("/api/giveaways", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: "anonymous", // Changed for pay-as-you-go
-          scheduledFor: finalDate.toISOString(),
-          config: { ...config, contactEmail: scheduleEmail },
-          status: "pending"
-        })
-      });
+    const res = await fetch("/api/giveaways", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: "anonymous",
+        scheduledFor: finalDate.toISOString(),
+        config: { ...config, contactEmail: scheduleEmail },
+        status: "pending",
+        paymentToken,
+      })
+    });
 
-      if (res.ok) {
-        setIsScheduled(true);
-        toast({ title: "Scheduled!", description: `Results will be sent to ${scheduleEmail}` });
-        setStep("scheduled");
-        refreshGiveaways();
-      } else {
-        throw new Error("Failed to schedule");
-      }
-
-    } catch (e) {
-      toast({ title: "Error", description: "Could not schedule giveaway", variant: "destructive" });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to schedule");
     }
+
+    setIsScheduled(true);
+    toast({ title: "Scheduled!", description: `Results will be sent to ${scheduleEmail}` });
+    setStep("scheduled");
+    refreshGiveaways();
   };
 
   return (
@@ -710,12 +770,12 @@ export default function GiveawayTool() {
                   {/* Winning Emails Toggle Removed */}
 
                   <Button
-                    onClick={handlePickWinners}
+                    onClick={() => setStep("payment")}
                     disabled={validEntries.length === 0}
                     className="w-full neo-btn-primary text-xl py-6 disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 border-green-700 mb-4"
                   >
                     <PartyPopper className="mr-2 w-6 h-6" />
-                    {scheduleDate ? "Schedule Giveaway" : "Pick Winners Now!"}
+                    {scheduleDate ? "Pay £5.00 & Schedule" : "Pay £5.00 & Pick Winners"}
                   </Button>
 
                   <Button
@@ -782,33 +842,65 @@ export default function GiveawayTool() {
                       </div>
 
                       <div className="pt-4 space-y-3">
-                        <Button
-                          onClick={handleConfirmSchedule}
-                          className="w-full neo-btn-primary bg-[#E1306C] text-white text-base sm:text-lg md:text-xl py-5 sm:py-6 md:py-8"
-                        >
-                          Pay £5.00 & Schedule
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={handleClearSchedule}
-                          className="w-full border-2 border-slate-300 text-slate-600 hover:bg-slate-100 text-base sm:text-lg font-bold uppercase"
-                        >
-                          Clear Schedule
-                        </Button>
+                        {clientSecret ? (
+                          <div className="w-full min-w-0 overflow-hidden">
+                            <Elements
+                              stripe={getStripe()}
+                              options={{ clientSecret, appearance: stripeAppearance }}
+                            >
+                              <CheckoutForm
+                                onSuccess={handlePaymentSuccess}
+                                onCancel={() => { setClientSecret(null); setStep("options"); }}
+                              />
+                            </Elements>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              onClick={() => {
+                                if (!scheduleEmail || !scheduleEmail.includes("@")) {
+                                  toast({ title: "Email Required", description: "Please enter a valid email", variant: "destructive" });
+                                  return;
+                                }
+                                handleCreatePaymentIntent();
+                              }}
+                              disabled={isCreatingIntent || !scheduleEmail || !scheduleEmail.includes("@")}
+                              className="w-full neo-btn-primary bg-[#E1306C] text-white text-base sm:text-lg md:text-xl py-5 sm:py-6 md:py-8"
+                            >
+                              {isCreatingIntent ? (
+                                <>
+                                  <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                                  Loading...
+                                </>
+                              ) : (
+                                "Pay £5.00 & Schedule"
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={handleClearSchedule}
+                              className="w-full border-2 border-slate-300 text-slate-600 hover:bg-slate-100 text-base sm:text-lg font-bold uppercase"
+                            >
+                              Clear Schedule
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
 
                     <Button variant="ghost" onClick={() => setStep("options")} className="text-base sm:text-lg font-bold uppercase">Base options</Button>
                   </div>
                 ) : (
-                  // Instant Payment View - pay first, then fetch comments
+                  // Instant Payment View - fetch (no credits) or pick winners
                   <>
                     <div className="text-center mb-6 sm:mb-8">
                       <div className="w-14 h-14 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-black">
                         <span className="text-xl sm:text-2xl">💷</span>
                       </div>
                       <h2 className="text-2xl sm:text-3xl font-black uppercase mb-2">Pay to Continue</h2>
-                      <p className="text-sm sm:text-base text-muted-foreground">One-time payment to access Instagram comments</p>
+                      <p className="text-sm sm:text-base text-muted-foreground">
+                        {fetchedEntries.length > 0 ? "One-time payment to pick winners" : "One-time payment to access Instagram comments"}
+                      </p>
                     </div>
 
                     <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
@@ -834,7 +926,7 @@ export default function GiveawayTool() {
                         >
                           <CheckoutForm
                             onSuccess={handlePaymentSuccess}
-                            onCancel={() => { setClientSecret(null); setStep("input"); }}
+                            onCancel={() => { setClientSecret(null); setStep(fetchedEntries.length > 0 ? "options" : "input"); }}
                           />
                         </Elements>
                       </div>
@@ -851,16 +943,16 @@ export default function GiveawayTool() {
                               Loading...
                             </>
                           ) : (
-                            "Pay £5.00 & Fetch Comments"
+                            fetchedEntries.length > 0 ? "Pay £5.00 & Pick Winners" : "Pay £5.00 & Fetch Comments"
                           )}
                         </Button>
 
                         <Button
                           variant="ghost"
-                          onClick={() => setStep("input")}
+                          onClick={() => setStep(fetchedEntries.length > 0 ? "options" : "input")}
                           className="w-full mt-2 text-base sm:text-lg font-bold uppercase"
                         >
-                          Back to URL Input
+                          {fetchedEntries.length > 0 ? "Back to Options" : "Back to URL Input"}
                         </Button>
                       </>
                     )}

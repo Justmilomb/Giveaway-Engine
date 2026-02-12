@@ -30,6 +30,7 @@ import {
   adminAuthMiddleware,
   generatePurchaseToken,
   redeemPurchaseToken,
+  consumeCredit,
   getSecurityStats,
   getClientIP,
 } from "./security";
@@ -185,28 +186,29 @@ export async function registerRoutes(
           });
         }
 
-        // Demo mode removed
-
-
-        // PAYMENT REQUIRED - must have valid payment token
-        if (!paymentToken || typeof paymentToken !== "string") {
-          return res.status(402).json({
-            error: "Payment required. Please complete payment before fetching comments.",
-            paymentRequired: true
-          });
-        }
-
-        // Verify the payment token
         const ip = getClientIP(req);
-        const tokenResult = redeemPurchaseToken(ip, paymentToken);
-        if (!tokenResult.success) {
-          return res.status(402).json({
-            error: tokenResult.error || "Invalid payment token",
-            paymentRequired: true
-          });
+        let usedPaymentToken = false;
+
+        // Use payment token if provided, otherwise consume free credits
+        if (paymentToken && typeof paymentToken === "string") {
+          usedPaymentToken = true;
+          const tokenResult = redeemPurchaseToken(ip, paymentToken);
+          if (!tokenResult.success) {
+            return res.status(402).json({
+              error: tokenResult.error || "Invalid payment token",
+              paymentRequired: true
+            });
+          }
+        } else {
+          if (!consumeCredit(ip)) {
+            return res.status(402).json({
+              error: "No credits remaining. Please complete payment.",
+              paymentRequired: true
+            });
+          }
         }
 
-        // Payment successful - now make the API call
+        // Payment/credits verified - now make the API call
         // Pass the full URL so we can extract the username from it
         const result = await fetchInstagramComments(url);
 
@@ -241,7 +243,7 @@ export async function registerRoutes(
           total: result.total,
           postInfo: result.postInfo,
           demo: false,
-          paid: true,
+          paid: usedPaymentToken,
           fraudStats: {
             flagged: entriesWithFraud.filter((e: any) => e.fraudScore > 20).length,
             total: entriesWithFraud.length,
@@ -323,10 +325,27 @@ export async function registerRoutes(
     validateGiveawayRequest,
     async (req, res) => {
       try {
-        const { scheduledFor, config, status, userId } = req.body;
+        const { scheduledFor, config, status, userId, paymentToken } = req.body;
 
         if (!scheduledFor || !config) {
           return res.status(400).send("Missing required fields");
+        }
+
+        // Payment required for scheduled giveaways
+        if (!paymentToken || typeof paymentToken !== "string") {
+          return res.status(402).json({
+            error: "Payment required. Please complete payment before scheduling.",
+            paymentRequired: true
+          });
+        }
+
+        const ip = getClientIP(req);
+        const tokenResult = redeemPurchaseToken(ip, paymentToken);
+        if (!tokenResult.success) {
+          return res.status(402).json({
+            error: tokenResult.error || "Invalid payment token",
+            paymentRequired: true
+          });
         }
 
         // Validate email is provided (required for anonymous giveaways)
@@ -676,7 +695,9 @@ export async function registerRoutes(
     adminAuthMiddleware,
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const id = typeof req.params.id === "string" ? req.params.id : req.params.id?.[0];
+        if (!id) return res.status(400).json({ error: "Invalid ad ID" });
+
         const updates = req.body;
 
         const ad = await storage.updateAd(id, updates);
@@ -700,7 +721,9 @@ export async function registerRoutes(
     adminAuthMiddleware,
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const id = typeof req.params.id === "string" ? req.params.id : req.params.id?.[0];
+        if (!id) return res.status(400).json({ error: "Invalid ad ID" });
+
         const success = await storage.deleteAd(id);
 
         if (!success) {
