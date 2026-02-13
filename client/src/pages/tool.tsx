@@ -103,6 +103,7 @@ export default function GiveawayTool() {
   const [customColor, setCustomColor] = useState("#E1306C");
   const [customizationOpen, setCustomizationOpen] = useState(false);
   const [, setLocation] = useLocation(); // for redirect if needed
+  const [fetchTimer, setFetchTimer] = useState(0);
 
   const [userGiveaways, setUserGiveaways] = useState<any[]>([]);
 
@@ -129,6 +130,13 @@ export default function GiveawayTool() {
     }
 
     setStep("fetching");
+    setFetchTimer(0);
+
+    // Start timer
+    const timerInterval = setInterval(() => {
+      setFetchTimer(prev => prev + 1);
+    }, 1000);
+
     try {
       const response = await fetch("/api/instagram/comments", {
         method: "POST",
@@ -181,6 +189,8 @@ export default function GiveawayTool() {
         description: error instanceof Error ? error.message : "Failed to fetch comments",
         variant: "destructive",
       });
+    } finally {
+      clearInterval(timerInterval);
     }
   };
 
@@ -226,38 +236,48 @@ export default function GiveawayTool() {
       if (fetchedEntries.length === 0) {
         toast({ title: "Payment Successful", description: "Fetching comments..." });
         setStep("fetching");
+        setFetchTimer(0);
 
-        const response = await fetch("/api/instagram/comments", {
+        // Start timer
+        const timerInterval = setInterval(() => {
+          setFetchTimer(prev => prev + 1);
+        }, 1000);
+
+        try {
+          const response = await fetch("/api/instagram/comments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url, paymentToken: token }),
         });
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
 
-        const entries = (data.entries || []).map((entry: any) => ({
-          ...entry,
-          fraudScore: entry.fraudScore || 0,
-        }));
+          const entries = (data.entries || []).map((entry: any) => ({
+            ...entry,
+            fraudScore: entry.fraudScore || 0,
+          }));
 
-        setFetchedEntries(entries);
-        setStep("options");
+          setFetchedEntries(entries);
+          setStep("options");
 
-        const initialValid = filterEntries(entries, {
-          keyword: "",
-          mentions: 1,
-          requireMention: false,
-          duplicates: true,
-          blockList: blockList,
-          excludeFraud: excludeFraud,
-        });
-        setValidEntries(initialValid);
+          const initialValid = filterEntries(entries, {
+            keyword: "",
+            mentions: 1,
+            requireMention: false,
+            duplicates: true,
+            blockList: blockList,
+            excludeFraud: excludeFraud,
+          });
+          setValidEntries(initialValid);
 
-        toast({
-          title: "Success!",
-          description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
-        });
+          toast({
+            title: "Success!",
+            description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
+          });
+        } finally {
+          clearInterval(timerInterval);
+        }
         return;
       }
 
@@ -587,6 +607,9 @@ export default function GiveawayTool() {
                   />
                 </div>
                 <p className="text-sm sm:text-base text-muted-foreground font-medium mt-2">Connecting to Instagram...</p>
+                <div className="mt-4 text-lg font-bold text-black bg-yellow-200 px-6 py-2 border-2 border-black rounded">
+                  ⏱️ {Math.floor(fetchTimer / 60)}:{String(fetchTimer % 60).padStart(2, '0')}
+                </div>
                 <AdBanner type="adsense" className="mt-8" />
               </motion.div>
             )}
@@ -597,9 +620,9 @@ export default function GiveawayTool() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="neo-box p-4 sm:p-8 md:p-12 bg-white flex flex-col lg:flex-row lg:gap-8"
+                className="neo-box p-4 sm:p-6 md:p-8 bg-white flex flex-col lg:flex-row lg:gap-6"
               >
-                <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
+                <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
                 <div className="flex items-center justify-between border-b-2 border-black pb-4">
                   <h2 className="text-xl sm:text-2xl font-bold uppercase">Filter Entries</h2>
                   <div className="flex flex-col items-end">
@@ -608,7 +631,7 @@ export default function GiveawayTool() {
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                   {/* Winner Count */}
                   <div className="space-y-4">
                     <Label className="font-bold text-base sm:text-lg uppercase flex items-center gap-2">
@@ -792,7 +815,7 @@ export default function GiveawayTool() {
                   </Button>
                 </div>
                 </div>
-                <div className="hidden lg:flex shrink-0 flex-col items-center pt-8 lg:pt-0">
+                <div className="hidden lg:flex shrink-0 flex-col items-center pt-6 lg:pt-0 lg:max-w-xs">
                   <AdBanner type="adsense" format="vertical" className="sticky top-28" />
                 </div>
               </motion.div>
@@ -918,7 +941,7 @@ export default function GiveawayTool() {
                         <p className="text-xs sm:text-sm font-medium text-blue-800">
                           ✓ Fetch all comments from your post<br />
                           ✓ Filter & pick random winners<br />
-                          ✓ Download winner announcement image
+                          ✓ Share results with your audience
                         </p>
                       </div>
                     </div>
@@ -1067,21 +1090,21 @@ export default function GiveawayTool() {
           </AnimatePresence>
 
           <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-            <DialogContent className="neo-box-static bg-white max-w-2xl max-h-[90vh] flex flex-col">
-              <DialogHeader className="pb-4 border-b-2 border-black flex-shrink-0">
-                <DialogTitle className="text-3xl font-black uppercase">Schedule Giveaway</DialogTitle>
-                <DialogDescription className="font-bold text-slate-600 text-base mt-2">
+            <DialogContent className="neo-box-static bg-white max-w-lg max-h-[85vh] flex flex-col">
+              <DialogHeader className="pb-3 border-b-2 border-black flex-shrink-0">
+                <DialogTitle className="text-2xl font-black uppercase">Schedule Giveaway</DialogTitle>
+                <DialogDescription className="font-bold text-slate-600 text-sm mt-1">
                   Pick a date and time for this giveaway to run automatically.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="py-6 space-y-6 overflow-y-auto flex-1 min-h-0">
+              <div className="py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
                 {/* Important Notice */}
-                <div className="bg-blue-50 border-2 border-blue-500 rounded-md p-4 flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="bg-blue-50 border-2 border-blue-500 rounded-md p-3 flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-black text-blue-900 uppercase text-sm">Scheduling Rules</p>
-                    <ul className="text-sm font-medium text-blue-800 space-y-1">
+                    <p className="font-black text-blue-900 uppercase text-xs">Scheduling Rules</p>
+                    <ul className="text-xs font-medium text-blue-800 space-y-0.5">
                       <li>• Minimum: 15 minutes from now</li>
                       <li>• Maximum: 1 month in advance</li>
                       <li>• Only valid times are shown in the selectors</li>
@@ -1090,9 +1113,9 @@ export default function GiveawayTool() {
                 </div>
 
                 {/* Quick Date Selection */}
-                <div className="space-y-3">
-                  <Label className="font-black uppercase text-base">Quick Select</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="font-black uppercase text-sm">Quick Select</Label>
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -1101,7 +1124,7 @@ export default function GiveawayTool() {
                         setScheduleDate(minTime);
                         setScheduleTime(format(minTime, "HH:mm"));
                       }}
-                      className="neo-input border-2 border-black hover:bg-slate-50 py-3 text-base font-bold"
+                      className="neo-input border-2 border-black hover:bg-slate-50 py-2 text-sm font-bold"
                     >
                       Earliest (15 min)
                     </Button>
@@ -1115,16 +1138,16 @@ export default function GiveawayTool() {
                         setScheduleDate(tomorrow);
                         setScheduleTime("12:00");
                       }}
-                      className="neo-input border-2 border-black hover:bg-slate-50 py-3 text-base font-bold"
+                      className="neo-input border-2 border-black hover:bg-slate-50 py-2 text-sm font-bold"
                     >
                       Tomorrow (Noon)
                     </Button>
                   </div>
                 </div>
 
-                {/* Calendar - Made Bigger */}
-                <div className="space-y-3">
-                  <Label className="font-black uppercase text-base">Or Pick a Date</Label>
+                {/* Calendar - Compact */}
+                <div className="space-y-2">
+                  <Label className="font-black uppercase text-sm">Or Pick a Date</Label>
                   <div className="flex justify-center py-2">
                     <Calendar
                       mode="single"
@@ -1192,8 +1215,8 @@ export default function GiveawayTool() {
                 </div>
 
                 {/* Time Selection with Scrollable Pickers */}
-                <div className="space-y-3">
-                  <Label className="font-black uppercase text-base">Select Time</Label>
+                <div className="space-y-2">
+                  <Label className="font-black uppercase text-sm">Select Time</Label>
                   <div className="flex items-end gap-4">
                     {/* Hours Select */}
                     <div className="flex-1 space-y-2">
