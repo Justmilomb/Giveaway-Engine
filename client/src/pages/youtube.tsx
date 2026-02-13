@@ -35,7 +35,7 @@ export default function YouTubePage() {
         <Layout>
             <SEO
                 title="YouTube Comment Picker | Random Giveaway Winner Generator"
-                description="Pick a random winner from YouTube comments. The best free tool for YouTube giveaways, contests, and sweepstakes. Fair, transparent, and instant."
+                description="Pick a random winner from YouTube comments. No signup, no login. Free tool for YouTube giveaways and contests. Fair, transparent, instant."
                 url="/youtube"
                 keywords="youtube comment picker, random comment picker youtube, youtube giveaway tool, youtube winner generator, content creator tools"
                 structuredData={faqStructuredData}

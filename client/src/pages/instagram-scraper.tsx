@@ -31,14 +31,25 @@ export default function InstagramScraperPage() {
         ]
     };
 
+    const webAppSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "PickUsAWinner Instagram Comments - Get All Comments",
+        applicationCategory: "UtilitiesApplication",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        description: "Get all Instagram comments from any post. No signup, no login. Export comments, analyze engagement, or feed into our giveaway picker.",
+        url: "https://pickusawinner.com/instagram-comment-scraper",
+    };
+
     return (
         <Layout>
             <SEO
-                title="Instagram Comment Getter | Get All Comments From Any Post"
-                description="Get all comments from any Instagram post. Simple, free tool. Different from our giveaway picker—just gets the comments. Use for analysis or feed into our winner picker."
+                title="Instagram Comments | Get All Comments From Any Post - No Login"
+                description="Get all Instagram comments from any post. No signup, no login. Export comments, analyze engagement, or feed into our giveaway picker. Works with posts and Reels."
                 url="/instagram-comment-scraper"
-                keywords="instagram comment getter, get instagram comments, export instagram comments, instagram giveaway tool, comment picker"
+                keywords="instagram comments, get instagram comments, export instagram comments, instagram comment getter, instagram giveaway tool"
                 structuredData={faqStructuredData}
+                additionalStructuredData={[webAppSchema]}
             />
 
             <div className="max-w-6xl mx-auto space-y-12 pb-20 pt-8">
@@ -55,7 +66,7 @@ export default function InstagramScraperPage() {
                         <span className="text-primary text-stroke-sm">Comment Getter</span>
                     </h1>
                     <p className="text-xl font-bold text-muted-foreground max-w-2xl mx-auto px-4">
-                        Get all comments from any post. Simple, no-fuss. Different from our giveaway picker—this just gets the comments. Use for analysis or feed into our winner picker.
+                        Get all <strong>Instagram comments</strong> from any post. No signup, no login. Export comments, analyze engagement, or feed into our giveaway picker. Works with posts and Reels.
                     </p>
 
                     <div className="pt-4">
@@ -99,15 +110,16 @@ export default function InstagramScraperPage() {
                 {/* Deep Dive Content */}
                 <div className="bg-white border-y-4 border-black py-16 px-6">
                     <div className="max-w-4xl mx-auto space-y-8">
-                        <h2 className="text-4xl font-black uppercase">Why use a Comment Getter?</h2>
+                        <h2 className="text-4xl font-black uppercase">Get Instagram Comments From Any Post</h2>
                         <div className="space-y-4 text-lg font-medium leading-relaxed">
                             <p>
+                                Need to <strong>get Instagram comments</strong> from a post? Our tool fetches all comments instantly. No signup, no login.
                                 In 2026, Instagram giveaways are more popular than ever. But as a creator, you face a huge challenge: <strong>how do you pick a winner fairly?</strong>
                                 Manually selecting from thousands of comments is not only slow but also prone to bias and can lead to accusations of "rigging" the contest.
                             </p>
                             <p>
-                                Our <strong>Comment Getter</strong> gets all comments from any post—same tech as our giveaway picker, but this tool just fetches the list. No winner selection here.
-                                Use it for analysis, export, or to see what you're working with. Then use our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Giveaway Picker</Link> to pick random winners fairly.
+                                Our tool gets all <strong>Instagram comments</strong> from any post—same tech as our giveaway picker, but this one just fetches the list. No winner selection here.
+                                Use it for analysis, export, or to see what you're working with. Then use our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Giveaway Generator</Link> to pick random winners fairly.
                             </p>
                             <h3 className="text-2xl font-black uppercase mt-8">SEO Benefits for Creators</h3>
                             <ul className="list-disc pl-5 space-y-2">

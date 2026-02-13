@@ -1,5 +1,6 @@
 import Layout from "@/components/layout";
 import { SEO } from "@/components/seo";
+import { Link } from "wouter";
 import { ListPickerComponent } from "@/components/tools/ListPickerComponent";
 import { motion } from "framer-motion";
 import { AdBanner } from "@/components/AdBanner";
@@ -27,18 +28,45 @@ export default function PickerPage() {
                     "@type": "Answer",
                     "text": "You can add thousands of names to the list. There is no strict limit, making it perfect for large raffles and giveaways."
                 }
+            },
+            {
+                "@type": "Question",
+                "name": "Is this random name generator free?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. Our random name generator is 100% free. No signup, no login, no payment. Use it for raffles, contests, and giveaways as much as you like."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Do I need an account?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "No. You can pick a random winner instantly without creating an account or logging in. Just paste your list and click pick."
+                }
             }
         ]
+    };
+
+    const webAppSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "PickUsAWinner Random Name Generator",
+        applicationCategory: "UtilitiesApplication",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        description: "Free random name generator. Pick a random winner from any list. No signup, no login.",
+        url: "https://pickusawinner.com/picker",
     };
 
     return (
         <Layout>
             <SEO
-                title="Random Name Picker | Free Raffle & Contest Winner Generator"
-                description="Pick a random winner from a list of names. Free, fast, and fair random name picker for raffles, contests, and giveaways. No registration required."
+                title="Random Name Generator | Free Raffle Winner Picker - No Signup"
+                description="Free random name generator. Pick a random winner from any list. No signup, no login. For raffles, contests, giveaways. Instant, fair, unlimited names."
                 url="/picker"
-                keywords="random name picker, random picker, raffle generator, contest winner picker, list randomizer, pick a winner"
+                keywords="random name generator, random name picker, raffle generator, random winner picker, list randomizer, pick a winner, no login"
                 structuredData={faqStructuredData}
+                additionalStructuredData={[webAppSchema]}
             />
 
             <div className="max-w-6xl mx-auto space-y-12 pb-12">
@@ -73,13 +101,14 @@ export default function PickerPage() {
                 {/* SEO Content Section */}
                 <div className="grid md:grid-cols-2 gap-8 px-4 py-8 bg-white border-y-4 border-black">
                     <div className="space-y-4">
-                        <h2 className="text-3xl font-black uppercase">Why use this Name Picker?</h2>
+                        <h2 className="text-3xl font-black uppercase">Random Name Generator - Pick a Winner Instantly</h2>
                         <p className="text-lg leading-relaxed">
-                            This <strong>Random Name Picker</strong> is designed to be the fastest and most secure way to pick a winner online.
-                            Unlike other tools, we run everything in your browser so your data stays private.
+                            Our <strong>random name generator</strong> is the fastest way to pick a random winner from any list. No signup, no login.
+                            Paste names, click pick, get a fair result. Perfect for raffles, contests, and giveaways. Prefer to <Link href="/wheel" className="text-primary font-bold underline hover:no-underline">spin the wheel</Link>? Try our Wheel of Names. For Instagram, use our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Giveaway Generator</Link>.
                         </p>
                         <h3 className="text-xl font-bold uppercase mt-6">Key Features:</h3>
                         <ul className="list-disc pl-5 space-y-2 font-medium">
+                            <li>No signup, no login required</li>
                             <li>100% Free and Ad-supported</li>
                             <li>No limit on number of names</li>
                             <li>Option to remove winners after selection</li>
@@ -104,7 +133,7 @@ export default function PickerPage() {
                             </li>
                         </ol>
                         <p className="mt-4 p-4 bg-primary text-white border-2 border-black font-bold">
-                            Looking for an Instagram giveaway picker? <a href="/tool" className="underline hover:text-yellow-300">Click here</a>.
+                            Looking for an Instagram giveaway? <Link href="/tool" className="underline hover:text-yellow-300">Instagram Giveaway Generator</Link>. Want to spin the wheel? <Link href="/wheel" className="underline hover:text-yellow-300">Wheel of Names</Link>.
                         </p>
                         <RelatedTools excludePath="/picker" max={3} className="mt-8 pt-6 border-t-2 border-black" />
                     </div>

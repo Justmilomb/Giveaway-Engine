@@ -386,7 +386,7 @@ export function getResultsEmailHTML(data: ResultsEmailData): string {
       </div>
       
       <div style="text-align: center; margin-top: 30px;">
-        <a href="https://giveaway-engine.com/tool" class="button">Run Another Giveaway</a>
+        <a href="https://pickusawinner.com/tool" class="button">Run Another Giveaway</a>
       </div>
     </div>
     

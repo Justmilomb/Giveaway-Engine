@@ -817,24 +817,24 @@ Disallow: /api/
 Disallow: /schedule/
 Disallow: /analytics
 
-Sitemap: https://giveaway-engine.com/sitemap.xml
+Sitemap: https://pickusawinner.com/sitemap.xml
 `);
   });
 
   app.get("/sitemap.xml", (_req, res) => {
-    const baseUrl = "https://giveaway-engine.com";
+    const baseUrl = "https://pickusawinner.com";
     const currentDate = new Date().toISOString().split("T")[0];
 
     const urls = [
       { loc: "/", changefreq: "weekly", priority: "1.0" },
       { loc: "/tool", changefreq: "weekly", priority: "0.9" },
       { loc: "/instagram-comment-scraper", changefreq: "weekly", priority: "0.85" },
+      { loc: "/wheel", changefreq: "weekly", priority: "0.85" },
+      { loc: "/picker", changefreq: "weekly", priority: "0.85" },
       { loc: "/youtube", changefreq: "weekly", priority: "0.8" },
       { loc: "/tiktok", changefreq: "weekly", priority: "0.8" },
       { loc: "/facebook-picker", changefreq: "weekly", priority: "0.8" },
       { loc: "/twitter-picker", changefreq: "weekly", priority: "0.8" },
-      { loc: "/wheel", changefreq: "weekly", priority: "0.8" },
-      { loc: "/picker", changefreq: "weekly", priority: "0.8" },
       { loc: "/coming-soon", changefreq: "monthly", priority: "0.4" },
       { loc: "/press", changefreq: "monthly", priority: "0.5" },
       { loc: "/contact", changefreq: "monthly", priority: "0.5" },

@@ -21,10 +21,10 @@ export default function Home() {
       },
       {
         "@type": "Question",
-        "name": "Is PickUsAWinner free to use?",
+        "name": "Do I need to sign up or log in to use PickUsAWinner?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, PickUsAWinner is 100% free to use. There are no hidden fees or premium subscriptions required."
+          "text": "No. PickUsAWinner requires no signup and no login. Use the tool instantly. One-time payment for extra credits when needed. Free to start."
         }
       },
       {
@@ -41,8 +41,8 @@ export default function Home() {
   return (
     <Layout>
       <SEO
-        title="Pick Us A Winner - Instagram Giveaway Tool"
-        description="The fastest and fairest way to pick winners for your Instagram giveaways. Automated, transparent, and 100% free. Pick winners from comments with advanced filtering options."
+        title="Instagram Giveaway Generator | No Signup, No Login"
+        description="Instagram giveaway generator & comment picker. Pick random winners from Instagram comments. No signup, no login, one-time payment. Free to start."
         url="/"
         structuredData={faqStructuredData}
       />
@@ -58,7 +58,7 @@ export default function Home() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="inline-block bg-accent text-white font-black px-3 sm:px-6 py-1.5 sm:py-2 border-2 sm:border-4 border-black shadow-[3px_3px_0px_0px_#000] sm:shadow-neo uppercase tracking-wider sm:tracking-widest transform -rotate-2 text-sm sm:text-base"
                 >
-                  🚀 #1 Pick Us A Winner Tool
+                  No Signup • No Login • One-Time Pay
                 </motion.div>
 
                 <motion.h1
@@ -79,7 +79,7 @@ export default function Home() {
                   transition={{ delay: 0.2 }}
                   className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-800 max-w-xl mx-auto lg:mx-0 leading-tight px-2 sm:px-0"
                 >
-                  The #1 Instagram Comment Getter & Giveaway Picker for creators. Fast, fair, and 100% free.
+                  Instagram giveaway generator & comment picker. No signup, no login, one-time payment. Free to start.
                 </motion.p>
 
                 <motion.div
@@ -125,8 +125,8 @@ export default function Home() {
         {/* Marquee with better branding */}
         <section className="full-bleed bg-primary text-white py-4 sm:py-6 md:py-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
           <div className="flex gap-8 sm:gap-16 text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] animate-marquee">
-            <span>Verified Random • Pick Us A Winner • Anti-Cheat • Open Source • Verified Random • Anti-Cheat</span>
-            <span>Verified Random • Pick Us A Winner • Anti-Cheat • Open Source • Verified Random • Anti-Cheat</span>
+            <span>No Signup • No Login • One-Time Pay • Instagram Giveaway Generator • Instagram Comments Picker</span>
+            <span>No Signup • No Login • One-Time Pay • Instagram Giveaway Generator • Instagram Comments Picker</span>
           </div>
         </section>
 
@@ -183,8 +183,8 @@ export default function Home() {
                   <Instagram className="w-8 h-8" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl sm:text-2xl font-black uppercase group-hover:text-primary transition-colors">Instagram Giveaway Picker</h3>
-                  <p className="text-sm font-medium text-muted-foreground">Pick random winners from comments. Filter, schedule, done.</p>
+                  <h3 className="text-xl sm:text-2xl font-black uppercase group-hover:text-primary transition-colors">Instagram Giveaway Generator</h3>
+                  <p className="text-sm font-medium text-muted-foreground">Pick random winners from comments. No signup, no login. Filter, schedule, done.</p>
                 </div>
                 <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
               </Link>
@@ -195,9 +195,9 @@ export default function Home() {
               <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Working Tools</p>
               <div className="grid sm:grid-cols-3 gap-3">
                 {[
-                  { href: "/instagram-comment-scraper", label: "Comment Getter", desc: "Get all comments from any post" },
-                  { href: "/wheel", label: "Wheel of Names", desc: "Spin to pick a winner" },
-                  { href: "/picker", label: "Random Picker", desc: "Pick from any list" },
+                  { href: "/instagram-comment-scraper", label: "Comment Getter", desc: "Get Instagram comments from any post" },
+                  { href: "/wheel", label: "Wheel of Names", desc: "Spin the wheel - random name generator" },
+                  { href: "/picker", label: "Random Picker", desc: "Random name generator - pick from any list" },
                 ].map((t) => (
                   <Link key={t.href} href={t.href} className="block p-3 sm:p-4 border-2 border-black bg-white hover:bg-secondary transition-colors group">
                     <h4 className="font-black uppercase group-hover:text-primary text-sm sm:text-base">{t.label}</h4>

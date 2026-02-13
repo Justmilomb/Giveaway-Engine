@@ -28,18 +28,45 @@ export default function WheelPage() {
                     "@type": "Answer",
                     "text": "Yes, our wheel uses a cryptographic random number generator to ensure 100% fairness for every spin."
                 }
+            },
+            {
+                "@type": "Question",
+                "name": "Is spin the wheel free?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. Our spin the wheel tool is 100% free. No signup, no login, no payment required. Use it as much as you like."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Do I need to sign up to spin the wheel?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "No. You can spin the wheel instantly without creating an account or logging in. Just enter names and click spin."
+                }
             }
         ]
+    };
+
+    const webAppSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "PickUsAWinner Spin the Wheel - Random Name Generator",
+        applicationCategory: "UtilitiesApplication",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        description: "Free spin the wheel tool. Random name generator to pick winners. No signup, no login.",
+        url: "https://pickusawinner.com/wheel",
     };
 
     return (
         <Layout>
             <SEO
-                title="Wheel of Names | Random Name Picker Wheel"
-                description="Free online Wheel of Names. Spin the wheel to pick a random winner, make a decision, or choose a prize. Customize entries and spin instantly."
+                title="Spin the Wheel | Random Name Generator - No Signup, No Login"
+                description="Free spin the wheel tool. Random name generator to pick winners. No signup, no login. Enter names, spin the wheel, get a random result. For giveaways, raffles, classroom, decisions."
                 url="/wheel"
-                keywords="wheel of names, random wheel, spin the wheel, random name picker wheel, decision wheel, raffle wheel"
+                keywords="spin the wheel, wheel of names, random name generator, spin wheel random, decision wheel, raffle wheel, pick a winner, no login"
                 structuredData={faqStructuredData}
+                additionalStructuredData={[webAppSchema]}
             />
 
             <div className="max-w-6xl mx-auto space-y-12 pb-12">
@@ -50,7 +77,7 @@ export default function WheelPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="inline-flex items-center gap-2 bg-[#FFDA44] border-2 border-black px-4 py-1 font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_#000] transform -rotate-1"
                     >
-                        <Sparkles className="w-5 h-5" /> Free & Unlimited
+                        <Sparkles className="w-5 h-5" /> No Signup, No Login
                     </motion.div>
                     <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase italic tracking-tighter">
                         Wheel of <span className="text-primary text-stroke-sm">Names</span>
@@ -74,11 +101,11 @@ export default function WheelPage() {
                 {/* SEO Content Section */}
                 <div className="grid md:grid-cols-2 gap-8 px-4 py-8 bg-white border-y-4 border-black">
                     <div className="space-y-4">
-                        <h2 className="text-3xl font-black uppercase">What is Wheel of Names?</h2>
+                        <h2 className="text-3xl font-black uppercase">Free Spin the Wheel - Random Name Generator</h2>
                         <p className="text-lg leading-relaxed">
-                            Our <strong>Wheel of Names</strong> is a free online tool that lets you randomly select a name, number, or item from a list.
-                            It's perfect for classroom activities, raffles, giveaways, or simply making a decision when you can't choose.
-                            For Instagram giveaways, try our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Picker</Link>.
+                            Our <strong>spin the wheel</strong> tool is a free <strong>random name generator</strong> that lets you pick a winner from any list.
+                            Enter names, spin the wheel, and get a random result. No signup, no login. Perfect for classroom activities, raffles, giveaways, or making a decision.
+                            For Instagram giveaways, try our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Giveaway Generator</Link>. Prefer a list? Use our <Link href="/picker" className="text-primary font-bold underline hover:no-underline">Random Name Picker</Link>.
                         </p>
                         <h3 className="text-xl font-bold uppercase mt-6">Popular Uses:</h3>
                         <ul className="list-disc pl-5 space-y-2 font-medium">

@@ -57,7 +57,7 @@ export async function sendEmail({ to, subject, text, html, replyTo }: EmailOptio
     }
 
     try {
-        const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@giveaway-engine.com";
+        const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@pickusawinner.com";
 
         const mailOptions = {
             from: fromEmail,

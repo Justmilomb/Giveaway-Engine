@@ -92,8 +92,8 @@ export default function ContactPage() {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://giveaway-engine.com/" },
-      { "@type": "ListItem", position: 2, name: "Contact", item: "https://giveaway-engine.com/contact" },
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://pickusawinner.com/" },
+      { "@type": "ListItem", position: 2, name: "Contact", item: "https://pickusawinner.com/contact" },
     ],
   };
 

@@ -27,7 +27,7 @@ export default function FacebookPage() {
         <Layout>
             <SEO
                 title="Facebook Comment Picker | Random Giveaway Winner Generator"
-                description="The best free Facebook comment picker for giveaways and contests. Randomly select winners from Facebook post comments fairly and instantly."
+                description="Free Facebook comment picker for giveaways and contests. No signup, no login. Randomly select winners from Facebook post comments fairly and instantly."
                 url="/facebook-picker"
                 keywords="facebook comment picker, facebook giveaway tool, random comment picker facebook, facebook contest winner"
                 structuredData={faqStructuredData}

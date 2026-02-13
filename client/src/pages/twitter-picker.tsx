@@ -27,7 +27,7 @@ export default function TwitterPage() {
         <Layout>
             <SEO
                 title="Twitter (X) Comment Picker | Random Giveaway Winner Generator"
-                description="The fastest Twitter giveaway tool. Randomly pick winners from X replies, retweets, and followers. Fair, open, and free for creators."
+                description="Twitter giveaway tool. No signup, no login. Randomly pick winners from X replies, retweets, and followers. Fair, open, free."
                 url="/twitter-picker"
                 keywords="twitter comment picker, x giveaway tool, twitter giveaway picker, random retweet picker, twitter winner generator"
                 structuredData={faqStructuredData}

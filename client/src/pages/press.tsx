@@ -41,8 +41,8 @@ export default function PressPage() {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://giveaway-engine.com/" },
-      { "@type": "ListItem", position: 2, name: "Press & Media", item: "https://giveaway-engine.com/press" },
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://pickusawinner.com/" },
+      { "@type": "ListItem", position: 2, name: "Press & Media", item: "https://pickusawinner.com/press" },
     ],
   };
 
@@ -70,8 +70,8 @@ export default function PressPage() {
           </h2>
           <p className="text-lg font-medium leading-relaxed">
             We appreciate backlinks from creators, blogs, and media. If you mention PickUsAWinner, please link to{" "}
-            <a href="https://giveaway-engine.com" className="text-primary font-bold underline hover:no-underline">
-              https://giveaway-engine.com
+            <a href="https://pickusawinner.com" className="text-primary font-bold underline hover:no-underline">
+              https://pickusawinner.com
             </a>{" "}
             or our main tool at{" "}
             <Link href="/tool" className="text-primary font-bold underline hover:no-underline">
@@ -80,7 +80,7 @@ export default function PressPage() {
             .
           </p>
           <div className="bg-slate-100 border-2 border-black p-4 font-mono text-sm">
-            &lt;a href="https://giveaway-engine.com"&gt;PickUsAWinner - Free Instagram Giveaway Picker&lt;/a&gt;
+            &lt;a href="https://pickusawinner.com"&gt;PickUsAWinner - Free Instagram Giveaway Picker&lt;/a&gt;
           </div>
         </section>
 

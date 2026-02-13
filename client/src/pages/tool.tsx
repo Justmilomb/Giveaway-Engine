@@ -537,19 +537,49 @@ export default function GiveawayTool() {
   return (
     <Layout>
       <SEO
-        title="Instagram Giveaway Picker"
-        description="Pick random winners from Instagram comments. Filter by keywords, mentions, exclude duplicates, and schedule automated giveaways. 100% free and transparent."
+        title="Instagram Giveaway Generator | No Signup, No Login"
+        description="Instagram giveaway generator & comment picker. Pick random winners from Instagram comments. No signup, no login, one-time payment. Filter, schedule, done."
         url="/tool"
-        keywords="instagram giveaway picker, random winner selector, instagram comments picker, giveaway tool, instagram contest winner"
+        keywords="instagram giveaway generator, instagram comments picker, no login, no signup, one-time payment, random winner selector, instagram contest"
         additionalStructuredData={[
           {
             "@context": "https://schema.org",
             "@type": "WebApplication",
-            name: "PickUsAWinner Instagram Picker",
+            name: "PickUsAWinner Instagram Giveaway Generator",
             applicationCategory: "UtilitiesApplication",
             offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-            description: "Pick random winners from Instagram comments. Filter by keywords, mentions, exclude duplicates.",
-            url: "https://giveaway-engine.com/tool",
+            description: "Instagram giveaway generator. Pick random winners from Instagram comments. No signup, no login, one-time payment.",
+            url: "https://pickusawinner.com/tool",
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: [
+              {
+                "@type": "Question",
+                name: "How do I pick an Instagram giveaway winner?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Paste your Instagram post URL, fetch comments, set filters (hashtags, mentions), and click Pick Winners. Our random algorithm selects fairly. No signup, no login required.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Is the Instagram giveaway generator free?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Yes. Free to start with 2 free credits. One-time payment for extra credits when needed. No subscription, no login required.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Do I need to log in to use the Instagram giveaway picker?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "No. You can use the Instagram giveaway generator without signing up or logging in. Just paste your post URL and pick winners.",
+                },
+              },
+            ],
           },
         ]}
       />
@@ -557,10 +587,10 @@ export default function GiveawayTool() {
         <div className="text-center mb-12 relative">
           {/* User header removed */}
           <div className="inline-flex items-center gap-2 bg-[#E1306C] text-white px-4 py-1 font-bold uppercase tracking-wider mb-4 border-2 border-black shadow-[4px_4px_0px_0px_#000000] transform -rotate-2">
-            <Instagram className="w-5 h-5" /> Instagram Giveaway
+            <Instagram className="w-5 h-5" /> Instagram Giveaway Generator
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase mb-4">Pick Winners</h1>
-          <p className="text-base sm:text-lg font-medium text-muted-foreground px-4 sm:px-0">Fairly select winners from Instagram comments.</p>
+          <p className="text-base sm:text-lg font-medium text-muted-foreground px-4 sm:px-0">Instagram giveaway generator & comments picker. Fairly select winners from Instagram comments. No signup, no login.</p>
         </div>
 
         <div className="grid gap-8">

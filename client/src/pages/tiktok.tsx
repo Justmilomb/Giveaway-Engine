@@ -27,7 +27,7 @@ export default function TikTokPage() {
         <Layout>
             <SEO
                 title="TikTok Comment Picker | Random Giveaway Winner Generator"
-                description="The best free TikTok comment picker. Randomly select winners for your TikTok giveaways and contests. Fair, fast, and no login required."
+                description="Free TikTok comment picker. No signup, no login. Randomly select winners for TikTok giveaways and contests. Fair, fast, instant."
                 url="/tiktok"
                 keywords="tiktok comment picker, tiktok giveaway tool, random comment picker tiktok, tiktok contest winner, social media giveaway tools"
                 structuredData={faqStructuredData}
