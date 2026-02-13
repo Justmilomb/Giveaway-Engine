@@ -159,6 +159,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/coming-soon" className="hover:text-primary transition-colors flex items-center gap-2 group opacity-60"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> YouTube Picker (Soon)</Link></li>
                 <li><Link href="/coming-soon" className="hover:text-primary transition-colors flex items-center gap-2 group opacity-60"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> TikTok Picker (Soon)</Link></li>
               </ul>
+            </div>
+
             <div className="md:col-span-5 space-y-6">
               <h4 className="font-black text-xl uppercase tracking-widest border-b-4 border-primary pb-2 inline-block">Tools</h4>
               <div className="space-y-4">

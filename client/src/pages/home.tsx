@@ -1,8 +1,7 @@
 import Layout from "@/components/layout";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles, RotateCcw, Users, Dice5, Instagram } from "lucide-react";
-import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles, Instagram, Youtube, Facebook, Twitter } from "lucide-react";
+import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles, RotateCcw, Users, Dice5, Instagram, Youtube, Facebook, Twitter } from "lucide-react";
 import heroImage from "@/assets/hero-giveaway.png";
 import { SEO } from "@/components/seo";
 import { AdBanner } from "@/components/AdBanner";
@@ -25,7 +24,6 @@ export default function Home() {
         "name": "Do I need to sign up or log in to use PickUsAWinner?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes! Our spin the wheel, random name picker, and random option picker tools are 100% free with no limits. Instagram comment fetching includes free credits, with additional credits available as a one-time purchase — no monthly subscriptions."
           "text": "No. PickUsAWinner requires no signup and no login. Use the tool instantly. One-time payment for extra credits when needed. Free to start."
         }
       },
@@ -74,12 +72,6 @@ export default function Home() {
         url="/"
         structuredData={faqStructuredData}
       />
-      <div className="space-y-16 sm:space-y-24 md:space-y-32 pb-16 sm:pb-32">
-        title="Instagram Giveaway Generator | No Signup, No Login"
-        description="Instagram giveaway generator & comment picker. Pick random winners from Instagram comments. No signup, no login, one-time payment. Free to start."
-        url="/"
-        structuredData={faqStructuredData}
-      />
       <div className="space-y-10 sm:space-y-14 md:space-y-20 pb-10 sm:pb-16">
 
         {/* Hero Section */}
@@ -103,12 +95,9 @@ export default function Home() {
                   className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black leading-[0.85] tracking-tighter italic"
                 >
                   PICK US <br className="hidden sm:block" />
-                  <span className="text-primary drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">
-                    A WINNER.
-                  GIVEAWAY <br className="hidden sm:block" />
-                  <span className="text-primary drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">
-                    GENERATOR.
-                  </span>
+                  <span className="text-primary drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">A WINNER.</span>
+                  {" "}GIVEAWAY <br className="hidden sm:block" />
+                  <span className="text-primary drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">GENERATOR.</span>
                 </motion.h1>
 
                 <motion.p
@@ -117,8 +106,7 @@ export default function Home() {
                   transition={{ delay: 0.2 }}
                   className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-800 max-w-xl mx-auto lg:mx-0 leading-tight px-2 sm:px-0"
                 >
-                  The simplest random selection toolkit on the web. Instagram giveaways, spin the wheel, name picker & more — all cryptographically fair.
-                  Instagram giveaway generator & comment picker. No signup, no login, one-time payment. Free to start.
+                  The simplest random selection toolkit on the web. Instagram giveaways, spin the wheel, name picker & more — all cryptographically fair. No signup, no login, one-time payment. Free to start.
                 </motion.p>
 
                 <motion.div
@@ -247,6 +235,9 @@ export default function Home() {
                 </Link>
               </motion.div>
             ))}
+          </div>
+        </section>
+
         {/* Marquee with better branding */}
         <section className="full-bleed bg-primary text-white py-4 sm:py-6 md:py-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
           <div className="flex gap-8 sm:gap-16 text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] animate-marquee">
@@ -361,6 +352,9 @@ export default function Home() {
             <Link href="/giveaway-generator" className="text-primary font-black uppercase text-sm hover:underline underline-offset-4 inline-flex items-center gap-1">
               View all platform details <ArrowRight className="w-4 h-4" />
             </Link>
+          </div>
+        </section>
+
         {/* Tools Hierarchy: 1. Instagram (main) 2. Working mini tools 3. Coming soon → Instagram */}
         <section className="container mx-auto px-4 py-8 sm:py-10">
           <h2 className="text-2xl sm:text-3xl font-black uppercase mb-5 text-center">All Our Tools</h2>
@@ -495,7 +489,5 @@ export default function Home() {
       {/* Organization structured data */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgStructuredData) }} />
     </Layout>
-      </div >
-    </Layout >
   );
 }
