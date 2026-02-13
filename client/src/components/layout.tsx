@@ -146,7 +146,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </ul>
                 <p className="text-xs font-black uppercase text-muted-foreground pt-2">Working</p>
                 <ul className="space-y-2 font-bold text-base">
-                  <li><Link href="/instagram-comment-scraper" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Comment Scraper</Link></li>
+                  <li><Link href="/instagram-comment-scraper" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Comment Getter</Link></li>
                   <li><Link href="/wheel" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Wheel of Names</Link></li>
                   <li><Link href="/picker" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Random Picker</Link></li>
                 </ul>

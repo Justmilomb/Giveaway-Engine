@@ -79,7 +79,7 @@ export default function Home() {
                   transition={{ delay: 0.2 }}
                   className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-800 max-w-xl mx-auto lg:mx-0 leading-tight px-2 sm:px-0"
                 >
-                  The #1 Instagram Comment Scraper & Giveaway Picker for creators. Fast, fair, and 100% free.
+                  The #1 Instagram Comment Getter & Giveaway Picker for creators. Fast, fair, and 100% free.
                 </motion.p>
 
                 <motion.div
@@ -172,12 +172,12 @@ export default function Home() {
         </section>
 
         {/* Tools Hierarchy: 1. Instagram (main) 2. Working mini tools 3. Coming soon → Instagram */}
-        <section className="container mx-auto px-4 py-12 sm:py-16">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase mb-8 text-center">All Our Tools</h2>
-          <div className="space-y-10 max-w-4xl mx-auto">
+        <section className="container mx-auto px-4 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-black uppercase mb-5 text-center">All Our Tools</h2>
+          <div className="space-y-5 max-w-4xl mx-auto">
             {/* Tier 1: Main - Instagram */}
-            <div className="border-4 border-black bg-primary/10 p-6 sm:p-8">
-              <p className="text-xs font-black uppercase tracking-widest text-primary mb-2">Main Tool</p>
+            <div className="border-4 border-black bg-primary/10 p-4 sm:p-6">
+              <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">Main Tool</p>
               <Link href="/tool" className="flex items-center gap-4 group">
                 <div className="bg-instagram p-3 border-2 border-black text-white">
                   <Instagram className="w-8 h-8" />
@@ -192,16 +192,16 @@ export default function Home() {
 
             {/* Tier 2: Working mini tools */}
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Working Tools</p>
-              <div className="grid sm:grid-cols-3 gap-4">
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Working Tools</p>
+              <div className="grid sm:grid-cols-3 gap-3">
                 {[
-                  { href: "/instagram-comment-scraper", label: "Comment Scraper", desc: "Export Instagram comments" },
+                  { href: "/instagram-comment-scraper", label: "Comment Getter", desc: "Get all comments from any post" },
                   { href: "/wheel", label: "Wheel of Names", desc: "Spin to pick a winner" },
                   { href: "/picker", label: "Random Picker", desc: "Pick from any list" },
                 ].map((t) => (
-                  <Link key={t.href} href={t.href} className="block p-4 border-2 border-black bg-white hover:bg-secondary transition-colors group">
-                    <h4 className="font-black uppercase group-hover:text-primary">{t.label}</h4>
-                    <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
+                  <Link key={t.href} href={t.href} className="block p-3 sm:p-4 border-2 border-black bg-white hover:bg-secondary transition-colors group">
+                    <h4 className="font-black uppercase group-hover:text-primary text-sm sm:text-base">{t.label}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
                   </Link>
                 ))}
               </div>
@@ -209,16 +209,16 @@ export default function Home() {
 
             {/* Tier 3: Coming soon → Instagram */}
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Coming Soon</p>
-              <p className="text-sm font-medium text-muted-foreground mb-4">These will launch later. Use Instagram Picker for now.</p>
-              <div className="flex flex-wrap gap-3">
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Coming Soon</p>
+              <p className="text-sm font-medium text-muted-foreground mb-2">These will launch later. Use Instagram Picker for now.</p>
+              <div className="flex flex-wrap gap-2">
                 {[
                   { href: "/youtube", label: "YouTube", icon: <Youtube className="w-4 h-4" /> },
                   { href: "/tiktok", label: "TikTok", icon: null },
                   { href: "/facebook-picker", label: "Facebook", icon: <Facebook className="w-4 h-4" /> },
                   { href: "/twitter-picker", label: "Twitter", icon: <Twitter className="w-4 h-4" /> },
                 ].map((t) => (
-                  <Link key={t.href} href={t.href} className="inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 text-slate-600 hover:border-black hover:text-black transition-colors text-sm font-bold">
+                  <Link key={t.href} href={t.href} className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-dashed border-slate-300 text-slate-600 hover:border-black hover:text-black transition-colors text-sm font-bold">
                     {t.icon}
                     {t.label}
                   </Link>
@@ -229,7 +229,7 @@ export default function Home() {
         </section>
 
         {/* Press / Media Kit - encourages backlinks */}
-        <section className="container mx-auto px-4 py-8 text-center">
+        <section className="container mx-auto px-4 py-6 text-center">
           <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Press & Media</p>
           <p className="text-base font-medium mb-4">
             Featured on creator blogs and giveaway guides. Link to us or download our logo.

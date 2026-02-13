@@ -14,18 +14,18 @@ export default function InstagramScraperPage() {
         "mainEntity": [
             {
                 "@type": "Question",
-                "name": "What is an Instagram Comment Scraper?",
+                "name": "What is an Instagram Comment Getter?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "An Instagram comment scraper is a tool that allows you to extract comments from a public Instagram post. It's essential for running giveaways and analyzing engagement."
+                    "text": "An Instagram comment getter is a simple tool that lets you get all comments from any public Instagram post. It's different from our Giveaway Picker—it just gets the comments. Use it for analysis, export, or to feed into our winner picker."
                 }
             },
             {
                 "@type": "Question",
-                "name": "How do I export Instagram comments to Excel?",
+                "name": "How do I export Instagram comments?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Our tool automatically scrapes all comments and allows you to use them for winner selection or export them for further analysis."
+                    "text": "Our tool gets all comments from any post and lets you use them for winner selection or export for further analysis."
                 }
             }
         ]
@@ -34,10 +34,10 @@ export default function InstagramScraperPage() {
     return (
         <Layout>
             <SEO
-                title="Instagram Comment Scraper | Export & Pick Winners"
-                description="Extract and scrape comments from any Instagram post. The best free Instagram comment scraper for giveaways, data analysis, and export. 100% secure and fast."
+                title="Instagram Comment Getter | Get All Comments From Any Post"
+                description="Get all comments from any Instagram post. Simple, free tool. Different from our giveaway picker—just gets the comments. Use for analysis or feed into our winner picker."
                 url="/instagram-comment-scraper"
-                keywords="instagram comment scraper, export instagram comments, scrape instagram comments, instagram giveaway tool, comment picker"
+                keywords="instagram comment getter, get instagram comments, export instagram comments, instagram giveaway tool, comment picker"
                 structuredData={faqStructuredData}
             />
 
@@ -48,19 +48,19 @@ export default function InstagramScraperPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="inline-flex items-center gap-2 bg-instagram text-white border-2 border-black px-4 py-1 font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_#000]"
                     >
-                        <Search className="w-5 h-5" /> Data Extraction Tool
+                        <Search className="w-5 h-5" /> Get All Comments
                     </motion.div>
                     <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase italic tracking-tighter leading-[0.9]">
                         Instagram <br className="hidden md:block" />
-                        <span className="text-primary text-stroke-sm">Comment Scraper</span>
+                        <span className="text-primary text-stroke-sm">Comment Getter</span>
                     </h1>
                     <p className="text-xl font-bold text-muted-foreground max-w-2xl mx-auto px-4">
-                        The most reliable way to extract comments from Instagram posts and Reels for giveaways and analysis.
+                        Get all comments from any post. Simple, no-fuss. Different from our giveaway picker—this just gets the comments. Use for analysis or feed into our winner picker.
                     </p>
 
                     <div className="pt-4">
                         <Link href="/tool" className="neo-btn-primary text-2xl py-6 px-12">
-                            Try the Scraper Now
+                            Get Comments Now
                         </Link>
                     </div>
                 </div>
@@ -71,8 +71,8 @@ export default function InstagramScraperPage() {
                         <div className="bg-yellow-400 p-3 border-2 border-black w-fit shadow-neo-sm">
                             <Zap className="w-8 h-8" />
                         </div>
-                        <h3 className="text-2xl font-black uppercase">Instant Export</h3>
-                        <p className="font-bold text-muted-foreground">Scrape up to 200 comments instantly. Need more? Our pro scraper handles 10,000+ comments.</p>
+                        <h3 className="text-2xl font-black uppercase">Instant</h3>
+                        <p className="font-bold text-muted-foreground">Get up to 200 comments instantly. Same tech as our giveaway picker—just gets the comments, no winner selection.</p>
                     </div>
                     <div className="neo-box p-8 bg-white space-y-4">
                         <div className="bg-primary p-3 border-2 border-black w-fit shadow-neo-sm text-white">
@@ -99,16 +99,15 @@ export default function InstagramScraperPage() {
                 {/* Deep Dive Content */}
                 <div className="bg-white border-y-4 border-black py-16 px-6">
                     <div className="max-w-4xl mx-auto space-y-8">
-                        <h2 className="text-4xl font-black uppercase">Why use an Instagram Scraper?</h2>
+                        <h2 className="text-4xl font-black uppercase">Why use a Comment Getter?</h2>
                         <div className="space-y-4 text-lg font-medium leading-relaxed">
                             <p>
                                 In 2026, Instagram giveaways are more popular than ever. But as a creator, you face a huge challenge: <strong>how do you pick a winner fairly?</strong>
                                 Manually selecting from thousands of comments is not only slow but also prone to bias and can lead to accusations of "rigging" the contest.
                             </p>
                             <p>
-                                Our <strong>Instagram Comment Scraper</strong> solves this by using the official API and certified random algorithms.
-                                We extract every comment on your post and let you apply rules like "must mention 2 friends" or "must include #giveaway".
-                                Then use our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Picker</Link> to pick random winners fairly.
+                                Our <strong>Comment Getter</strong> gets all comments from any post—same tech as our giveaway picker, but this tool just fetches the list. No winner selection here.
+                                Use it for analysis, export, or to see what you're working with. Then use our <Link href="/tool" className="text-primary font-bold underline hover:no-underline">Instagram Giveaway Picker</Link> to pick random winners fairly.
                             </p>
                             <h3 className="text-2xl font-black uppercase mt-8">SEO Benefits for Creators</h3>
                             <ul className="list-disc pl-5 space-y-2">
