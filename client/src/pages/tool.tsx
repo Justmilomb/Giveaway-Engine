@@ -18,18 +18,51 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { SEO } from "@/components/seo";
 import { AdBanner } from "@/components/AdBanner";
+import { Elements } from "@stripe/react-stripe-js";
+import { CheckoutForm } from "@/components/checkout-form";
+import { getStripe } from "@/lib/stripe";
 
 import { useLocation } from "wouter";
+import { useMediaQuery } from "@/hooks/use-media-query";
+
+const stripeAppearance = {
+  theme: "flat" as const,
+  variables: {
+    colorPrimary: "#000000",
+    colorBackground: "#ffffff",
+    colorText: "#000000",
+    fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
+    fontSizeBase: "16px",
+    spacingUnit: "8px",
+    borderRadius: "0px",
+    fontWeightNormal: "700",
+  },
+  rules: {
+    ".Input": {
+      border: "2px solid #000000",
+      boxShadow: "3px 3px 0px 0px rgba(0,0,0,1)",
+      padding: "12px",
+    },
+    ".Input:focus": {
+      border: "2px solid #E1306C",
+      boxShadow: "3px 3px 0px 0px rgba(225,48,108,1)",
+    },
+    ".Label": {
+      fontWeight: "700",
+      textTransform: "uppercase" as const,
+    },
+  },
+};
 
 // Entry type for comments
 interface Entry {
   id: string;
   username: string;
-  avatar?: string;
   comment: string;
   platform: "instagram";
   timestamp?: string;
   fraudScore?: number;
+  userId?: string;
 }
 
 export default function GiveawayTool() {
@@ -37,9 +70,10 @@ export default function GiveawayTool() {
 
   // Input State
   const [url, setUrl] = useState("");
-  const [isDemo, setIsDemo] = useState(false);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
 
 
   // Rules State
@@ -66,13 +100,14 @@ export default function GiveawayTool() {
   const [scheduleEmail, setScheduleEmail] = useState("");
   const [isScheduled, setIsScheduled] = useState(false);
   const [winnerEmails, setWinnerEmails] = useState<Record<string, string>>({});
-  const [sendWinningEmails, setSendWinningEmails] = useState(false);
   const [customTheme, setCustomTheme] = useState<"default" | "dark" | "pink" | "custom">("default");
   const [customColor, setCustomColor] = useState("#E1306C");
   const [customizationOpen, setCustomizationOpen] = useState(false);
   const [, setLocation] = useLocation(); // for redirect if needed
+  const [fetchTimer, setFetchTimer] = useState(0);
 
   const [userGiveaways, setUserGiveaways] = useState<any[]>([]);
+  const isLg = useMediaQuery("(min-width: 1024px)");
 
   const refreshGiveaways = () => {
     // Placeholder for future local storage or session based history
@@ -85,7 +120,7 @@ export default function GiveawayTool() {
     }
   }, [winnerCount, filterKeyword, minMentions, requireMention, excludeDuplicates, blockList, enableBonusChances, excludeFraud]);
 
-  // Handle initial form submission - validates URL and goes to payment (or demo)
+  // Handle initial form submission - fetches comments using free credits (no payment yet)
   const handleFetch = async (e: React.FormEvent) => {
     e.preventDefault();
     setFetchError(null);
@@ -96,88 +131,34 @@ export default function GiveawayTool() {
       return;
     }
 
-    // If demo mode, fetch immediately (free)
-    if (isDemo) {
-      setStep("fetching");
-      try {
-        const response = await fetch("/api/instagram/comments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, demo: true }),
-        });
+    setStep("fetching");
+    setFetchTimer(0);
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Failed to fetch");
-
-        const entries = (data.entries || []).map((entry: any) => ({
-          ...entry,
-          fraudScore: entry.fraudScore || 0,
-        }));
-
-        setFetchedEntries(entries);
-        setIsDemo(true);
-        setStep("options");
-
-        const initialValid = filterEntries(entries, {
-          keyword: "",
-          mentions: 1,
-          requireMention: false,
-          duplicates: true,
-          blockList: blockList,
-          excludeFraud: excludeFraud
-        });
-        setValidEntries(initialValid);
-
-        toast({ title: "Demo Mode", description: `Loaded ${entries.length > 200 ? "200+" : entries.length} sample entries` });
-      } catch (error) {
-        setFetchError(error instanceof Error ? error.message : "Unknown error");
-        setStep("input");
-        toast({ title: "Error", description: "Failed to load demo data", variant: "destructive" });
-      }
-      return;
-    }
-
-    // Non-demo: go to payment step first
-    setStep("payment");
-  };
-
-  // Process payment and fetch comments
-  const handleProcessPayment = async () => {
-    setIsProcessingPayment(true);
+    // Start timer
+    const timerInterval = setInterval(() => {
+      setFetchTimer(prev => prev + 1);
+    }, 1000);
 
     try {
-      // Step 1: Process payment
-      const paymentRes = await fetch("/api/payment/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 500, url }), // £5.00 in pence
-      });
-
-      const paymentData = await paymentRes.json();
-
-      if (!paymentRes.ok) {
-        throw new Error(paymentData.error || "Payment failed");
-      }
-
-      const token = paymentData.paymentToken;
-      setPaymentToken(token);
-
-      toast({ title: "Payment Successful", description: "Fetching comments..." });
-
-      // Step 2: Fetch comments with the payment token
-      setStep("fetching");
-
       const response = await fetch("/api/instagram/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, demo: false, paymentToken: token }),
+        body: JSON.stringify({ url }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch comments");
+      if (response.status === 402) {
+        setStep("payment");
+        toast({
+          title: "Payment Required",
+          description: data.error || "No credits remaining. Complete payment to fetch comments.",
+          variant: "destructive",
+        });
+        return;
       }
+
+      if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
 
       const entries = (data.entries || []).map((entry: any) => ({
         ...entry,
@@ -185,7 +166,6 @@ export default function GiveawayTool() {
       }));
 
       setFetchedEntries(entries);
-      setIsDemo(false);
       setStep("options");
 
       const initialValid = filterEntries(entries, {
@@ -194,26 +174,136 @@ export default function GiveawayTool() {
         requireMention: false,
         duplicates: true,
         blockList: blockList,
-        excludeFraud: excludeFraud
+        excludeFraud: excludeFraud,
       });
       setValidEntries(initialValid);
 
       toast({
         title: "Success!",
-        description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`
+        description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
       });
-
     } catch (error) {
-      console.error("Payment/Fetch error:", error);
+      console.error("Fetch error:", error);
       setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
       setStep("input");
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Payment or fetch failed",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to fetch comments",
+        variant: "destructive",
+      });
+    } finally {
+      clearInterval(timerInterval);
+    }
+  };
+
+  // Step 1: Create a Stripe PaymentIntent and show card form
+  const handleCreatePaymentIntent = async () => {
+    setIsCreatingIntent(true);
+    try {
+      const res = await fetch("/api/payment/create-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create payment");
+      setClientSecret(data.clientSecret);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start payment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingIntent(false);
+    }
+  };
+
+  // After Stripe confirms: fetch comments (if no data), pick winners (instant), or create scheduled giveaway
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    setIsProcessingPayment(true);
+    try {
+      const confirmRes = await fetch("/api/payment/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || "Payment verification failed");
+
+      const token = confirmData.paymentToken;
+      setPaymentToken(token);
+
+      // Case 1: No data yet - fetch comments with token, then go to options
+      if (fetchedEntries.length === 0) {
+        toast({ title: "Payment Successful", description: "Fetching comments..." });
+        setStep("fetching");
+        setFetchTimer(0);
+
+        // Start timer
+        const timerInterval = setInterval(() => {
+          setFetchTimer(prev => prev + 1);
+        }, 1000);
+
+        try {
+          const response = await fetch("/api/instagram/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, paymentToken: token }),
+        });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
+
+          const entries = (data.entries || []).map((entry: any) => ({
+            ...entry,
+            fraudScore: entry.fraudScore || 0,
+          }));
+
+          setFetchedEntries(entries);
+          setStep("options");
+
+          const initialValid = filterEntries(entries, {
+            keyword: "",
+            mentions: 1,
+            requireMention: false,
+            duplicates: true,
+            blockList: blockList,
+            excludeFraud: excludeFraud,
+          });
+          setValidEntries(initialValid);
+
+          toast({
+            title: "Success!",
+            description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
+          });
+        } finally {
+          clearInterval(timerInterval);
+        }
+        return;
+      }
+
+      // Case 2: Have data + scheduled - create giveaway with token
+      if (scheduleDate) {
+        await handleConfirmScheduleWithToken(token);
+        return;
+      }
+
+      // Case 3: Have data + instant - pick winners (client-side)
+      toast({ title: "Payment Successful", description: "Picking winners..." });
+      handlePickWinners();
+    } catch (error) {
+      console.error("Payment error:", error);
+      setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
+      setStep(fetchedEntries.length > 0 ? "options" : "input");
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Payment failed",
+        variant: "destructive",
       });
     } finally {
       setIsProcessingPayment(false);
+      setClientSecret(null);
     }
   };
 
@@ -292,8 +382,18 @@ export default function GiveawayTool() {
 
     setStep("picking");
     // Simulate picking delay
-    setTimeout(() => {
+    setTimeout(async () => {
       let selectedWinners: Entry[] = [];
+
+      // Helper for Fisher-Yates shuffle
+      const shuffle = <T,>(array: T[]) => {
+        const newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+      };
 
       if (enableBonusChances) {
         // Weighted selection based on mention count
@@ -310,8 +410,8 @@ export default function GiveawayTool() {
           }
         });
 
-        // Shuffle and pick unique winners
-        const shuffled = [...weightedPool].sort(() => 0.5 - Math.random());
+        // Fisher-Yates shuffle
+        const shuffled = shuffle(weightedPool);
         const seen = new Set<string>();
         for (const entry of shuffled) {
           if (!seen.has(entry.username) && selectedWinners.length < winnerCount) {
@@ -320,13 +420,14 @@ export default function GiveawayTool() {
           }
         }
       } else {
-        // Regular random selection
-        const shuffled = [...validEntries].sort(() => 0.5 - Math.random());
+        // Regular Fisher-Yates shuffle
+        const shuffled = shuffle(validEntries);
         selectedWinners = shuffled.slice(0, winnerCount);
       }
 
       setWinners(selectedWinners);
       setStep("results");
+      // Follower check removed
     }, 3000);
   };
 
@@ -336,9 +437,9 @@ export default function GiveawayTool() {
     // retain inputs for convenience
     setFetchedEntries([]);
     setValidEntries([]);
-    setIsDemo(false);
     setFetchError(null);
     setPaymentToken(null);
+    setClientSecret(null);
   };
 
   const handleSetScheduleTime = () => {
@@ -374,7 +475,7 @@ export default function GiveawayTool() {
     toast({ title: "Schedule Cleared", description: "You can now proceed with instant winner generation." });
   };
 
-  const handleConfirmSchedule = async () => {
+  const handleConfirmScheduleWithToken = async (paymentToken: string) => {
     if (!scheduleEmail || !scheduleEmail.includes("@")) {
       toast({ title: "Email Required", description: "Please enter a valid email to receive results.", variant: "destructive" });
       return;
@@ -410,48 +511,86 @@ export default function GiveawayTool() {
       excludeFraud: excludeFraud,
     };
 
-    try {
-      const res = await fetch("/api/giveaways", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: "anonymous", // Changed for pay-as-you-go
-          scheduledFor: finalDate.toISOString(),
-          config: { ...config, contactEmail: scheduleEmail },
-          status: "pending"
-        })
-      });
+    const res = await fetch("/api/giveaways", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: "anonymous",
+        scheduledFor: finalDate.toISOString(),
+        config: { ...config, contactEmail: scheduleEmail },
+        status: "pending",
+        paymentToken,
+      })
+    });
 
-      if (res.ok) {
-        setIsScheduled(true);
-        toast({ title: "Scheduled!", description: `Results will be sent to ${scheduleEmail}` });
-        setStep("scheduled");
-        refreshGiveaways();
-      } else {
-        throw new Error("Failed to schedule");
-      }
-
-    } catch (e) {
-      toast({ title: "Error", description: "Could not schedule giveaway", variant: "destructive" });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to schedule");
     }
+
+    setIsScheduled(true);
+    toast({ title: "Scheduled!", description: `Results will be sent to ${scheduleEmail}` });
+    setStep("scheduled");
+    refreshGiveaways();
   };
 
   return (
     <Layout>
       <SEO
-        title="Instagram Giveaway Picker"
-        description="Pick random winners from Instagram comments. Filter by keywords, mentions, exclude duplicates, and schedule automated giveaways. 100% free and transparent."
+        title="Instagram Giveaway Generator | No Signup, No Login"
+        description="Instagram giveaway generator & comment picker. Pick random winners from Instagram comments. No signup, no login, one-time payment. Filter, schedule, done."
         url="/tool"
-        keywords="instagram giveaway picker, random winner selector, instagram comments picker, giveaway tool, instagram contest winner"
+        keywords="instagram giveaway generator, instagram comments picker, no login, no signup, one-time payment, random winner selector, instagram contest"
+        additionalStructuredData={[
+          {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: "PickUsAWinner Instagram Giveaway Generator",
+            applicationCategory: "UtilitiesApplication",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            description: "Instagram giveaway generator. Pick random winners from Instagram comments. No signup, no login, one-time payment.",
+            url: "https://pickusawinner.com/tool",
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: [
+              {
+                "@type": "Question",
+                name: "How do I pick an Instagram giveaway winner?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Paste your Instagram post URL, fetch comments, set filters (hashtags, mentions), and click Pick Winners. Our random algorithm selects fairly. No signup, no login required.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Is the Instagram giveaway generator free?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Yes. Free to start with 2 free credits. One-time payment for extra credits when needed. No subscription, no login required.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Do I need to log in to use the Instagram giveaway picker?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "No. You can use the Instagram giveaway generator without signing up or logging in. Just paste your post URL and pick winners.",
+                },
+              },
+            ],
+          },
+        ]}
       />
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12 relative">
           {/* User header removed */}
           <div className="inline-flex items-center gap-2 bg-[#E1306C] text-white px-4 py-1 font-bold uppercase tracking-wider mb-4 border-2 border-black shadow-[4px_4px_0px_0px_#000000] transform -rotate-2">
-            <Instagram className="w-5 h-5" /> Instagram Giveaway
+            <Instagram className="w-5 h-5" /> Instagram Giveaway Generator
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase mb-4">Pick Winners</h1>
-          <p className="text-base sm:text-lg font-medium text-muted-foreground px-4 sm:px-0">Fairly select winners from Instagram comments.</p>
+          <p className="text-base sm:text-lg font-medium text-muted-foreground px-4 sm:px-0">Instagram giveaway generator & comments picker. Fairly select winners from Instagram comments. No signup, no login.</p>
         </div>
 
         <div className="grid gap-8">
@@ -482,11 +621,6 @@ export default function GiveawayTool() {
                     <Search className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
                     Fetch Comments
                   </Button>
-
-                  <div className="flex items-center justify-center gap-2 mt-4">
-                    <Checkbox id="demo-mode" checked={isDemo} onCheckedChange={(v) => setIsDemo(v as boolean)} />
-                    <Label htmlFor="demo-mode" className="text-sm font-medium text-muted-foreground cursor-pointer">simulate (demo mode)</Label>
-                  </div>
                 </form>
               </motion.div>
             )}
@@ -512,7 +646,10 @@ export default function GiveawayTool() {
                   />
                 </div>
                 <p className="text-sm sm:text-base text-muted-foreground font-medium mt-2">Connecting to Instagram...</p>
-                <AdBanner className="mt-8" />
+                <div className="mt-4 text-lg font-bold text-black bg-yellow-200 px-6 py-2 border-2 border-black rounded">
+                  ⏱️ {Math.floor(fetchTimer / 60)}:{String(fetchTimer % 60).padStart(2, '0')}
+                </div>
+                <AdBanner type="adsense" className="mt-8" />
               </motion.div>
             )}
 
@@ -522,8 +659,9 @@ export default function GiveawayTool() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="neo-box p-4 sm:p-8 md:p-12 bg-white space-y-6 sm:space-y-8"
+                className="neo-box p-4 sm:p-6 md:p-8 bg-white flex flex-col lg:flex-row lg:gap-6"
               >
+                <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
                 <div className="flex items-center justify-between border-b-2 border-black pb-4">
                   <h2 className="text-xl sm:text-2xl font-bold uppercase">Filter Entries</h2>
                   <div className="flex flex-col items-end">
@@ -532,7 +670,7 @@ export default function GiveawayTool() {
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                   {/* Winner Count */}
                   <div className="space-y-4">
                     <Label className="font-bold text-base sm:text-lg uppercase flex items-center gap-2">
@@ -692,33 +830,15 @@ export default function GiveawayTool() {
                     <span className="font-black text-3xl">{validEntries.length > 200 ? "200+" : validEntries.length}</span>
                   </div>
 
-                  {/* Winning Emails Toggle */}
-                  <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-300 rounded">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <Label className="font-bold text-lg uppercase cursor-pointer" htmlFor="email-switch">
-                          Send Winning Emails?
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Collect emails and notify winners automatically
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-switch"
-                        checked={sendWinningEmails}
-                        onCheckedChange={setSendWinningEmails}
-                        className="data-[state=checked]:bg-black border-2 border-black"
-                      />
-                    </div>
-                  </div>
+                  {/* Winning Emails Toggle Removed */}
 
                   <Button
-                    onClick={handlePickWinners}
+                    onClick={() => setStep("payment")}
                     disabled={validEntries.length === 0}
                     className="w-full neo-btn-primary text-xl py-6 disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 border-green-700 mb-4"
                   >
                     <PartyPopper className="mr-2 w-6 h-6" />
-                    {scheduleDate ? "Schedule Giveaway" : "Pick Winners Now!"}
+                    {scheduleDate ? "Pay £5.00 & Schedule" : "Pay £5.00 & Pick Winners"}
                   </Button>
 
                   <Button
@@ -733,6 +853,12 @@ export default function GiveawayTool() {
                     }
                   </Button>
                 </div>
+                </div>
+                {isLg && (
+                  <div className="shrink-0 flex flex-col items-center pt-6 lg:pt-0 lg:max-w-xs">
+                    <AdBanner type="adsense" format="vertical" className="sticky top-28" />
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -742,122 +868,163 @@ export default function GiveawayTool() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`neo-box ${scheduleDate ? 'p-6 sm:p-12 max-w-2xl' : 'p-4 sm:p-8 max-w-md'} bg-white mx-auto`}
+                className={`neo-box w-full max-w-full min-w-0 overflow-hidden ${scheduleDate ? 'p-4 sm:p-6 md:p-12 max-w-2xl' : 'p-4 sm:p-6 md:p-8 max-w-md'} bg-white mx-auto`}
               >
                 {scheduleDate ? (
                   // Scheduled Payment View (Big Text)
-                  <div className="space-y-8 text-center">
+                  <div className="space-y-6 sm:space-y-8 text-center">
                     <div className="space-y-4">
-                      <h2 className="text-4xl md:text-5xl font-black uppercase leading-tight">
+                      <h2 className="text-2xl sm:text-4xl md:text-5xl font-black uppercase leading-tight">
                         Confirm Schedule
                       </h2>
-                      <p className="text-xl font-bold bg-yellow-300 inline-block px-2 border-2 border-black transform -rotate-1">
+                      <p className="text-base sm:text-xl font-bold bg-yellow-300 inline-block px-2 border-2 border-black transform -rotate-1">
                         For {format(scheduleDate, "MMMM do")} at {scheduleTime}
                       </p>
                     </div>
 
-                    <div className="bg-slate-50 border-4 border-black p-6 md:p-8 space-y-6 text-left">
-                      <div className="flex gap-4 items-start">
-                        <div className="bg-black text-white p-2 rounded-full min-w-[2rem] h-8 flex items-center justify-center font-bold">1</div>
-                        <div>
-                          <h3 className="font-black uppercase text-lg">Full Control</h3>
-                          <p className="font-medium text-slate-600">You can edit your giveaway options anytime up to <span className="font-bold text-black bg-yellow-200 px-1">15 minutes before</span> the scheduled time.</p>
+                    <div className="bg-slate-50 border-4 border-black p-4 sm:p-6 md:p-8 space-y-6 text-left">
+                      <div className="flex gap-3 sm:gap-4 items-start">
+                        <div className="bg-black text-white p-2 rounded-full min-w-[2rem] h-8 flex items-center justify-center font-bold text-sm sm:text-base">1</div>
+                        <div className="min-w-0">
+                          <h3 className="font-black uppercase text-base sm:text-lg">Full Control</h3>
+                          <p className="font-medium text-slate-600 text-sm sm:text-base">You can edit your giveaway options anytime up to <span className="font-bold text-black bg-yellow-200 px-1">15 minutes before</span> the scheduled time.</p>
                         </div>
                       </div>
-                      <div className="flex gap-4 items-start">
-                        <div className="bg-black text-white p-2 rounded-full min-w-[2rem] h-8 flex items-center justify-center font-bold">2</div>
-                        <div>
-                          <h3 className="font-black uppercase text-lg">Instant Delivery</h3>
-                          <p className="font-medium text-slate-600">We will email you a secure link to manage your giveaway and view winners instantly when they are picked.</p>
+                      <div className="flex gap-3 sm:gap-4 items-start">
+                        <div className="bg-black text-white p-2 rounded-full min-w-[2rem] h-8 flex items-center justify-center font-bold text-sm sm:text-base">2</div>
+                        <div className="min-w-0">
+                          <h3 className="font-black uppercase text-base sm:text-lg">Instant Delivery</h3>
+                          <p className="font-medium text-slate-600 text-sm sm:text-base">We will email you a secure link to manage your giveaway and view winners instantly when they are picked.</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-4 max-w-md mx-auto">
+                    <div className="space-y-4 max-w-md mx-auto w-full">
                       <div className="space-y-2 text-left">
-                        <Label className="font-black uppercase text-lg">Enter Your Email</Label>
+                        <Label className="font-black uppercase text-base sm:text-lg">Enter Your Email</Label>
                         <Input
                           placeholder="you@email.com"
                           value={scheduleEmail}
                           onChange={(e) => setScheduleEmail(e.target.value)}
-                          className="neo-input text-xl py-6"
+                          className="neo-input text-base sm:text-lg md:text-xl py-4 sm:py-6"
                         />
                       </div>
 
                       <div className="pt-4 space-y-3">
-                        <Button
-                          onClick={handleConfirmSchedule}
-                          className="w-full neo-btn-primary bg-[#E1306C] text-white text-2xl py-8"
-                        >
-                          Pay £5.00 & Schedule
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={handleClearSchedule}
-                          className="w-full border-2 border-slate-300 text-slate-600 hover:bg-slate-100"
-                        >
-                          Clear Schedule
-                        </Button>
+                        {clientSecret ? (
+                          <div className="w-full min-w-0 overflow-hidden">
+                            <Elements
+                              stripe={getStripe()}
+                              options={{ clientSecret, appearance: stripeAppearance }}
+                            >
+                              <CheckoutForm
+                                onSuccess={handlePaymentSuccess}
+                                onCancel={() => { setClientSecret(null); setStep("options"); }}
+                              />
+                            </Elements>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              onClick={() => {
+                                if (!scheduleEmail || !scheduleEmail.includes("@")) {
+                                  toast({ title: "Email Required", description: "Please enter a valid email", variant: "destructive" });
+                                  return;
+                                }
+                                handleCreatePaymentIntent();
+                              }}
+                              disabled={isCreatingIntent || !scheduleEmail || !scheduleEmail.includes("@")}
+                              className="w-full neo-btn-primary bg-[#E1306C] text-white text-base sm:text-lg md:text-xl py-5 sm:py-6 md:py-8"
+                            >
+                              {isCreatingIntent ? (
+                                <>
+                                  <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                                  Loading...
+                                </>
+                              ) : (
+                                "Pay £5.00 & Schedule"
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={handleClearSchedule}
+                              className="w-full border-2 border-slate-300 text-slate-600 hover:bg-slate-100 text-base sm:text-lg font-bold uppercase"
+                            >
+                              Clear Schedule
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <Button variant="ghost" onClick={() => setStep("options")}>Base options</Button>
+                    <Button variant="ghost" onClick={() => setStep("options")} className="text-base sm:text-lg font-bold uppercase">Base options</Button>
                   </div>
                 ) : (
-                  // Instant Payment View - pay first, then fetch comments
+                  // Instant Payment View - fetch (no credits) or pick winners
                   <>
-                    <div className="text-center mb-8">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-black">
-                        <span className="text-2xl">💷</span>
+                    <div className="text-center mb-6 sm:mb-8">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-black">
+                        <span className="text-xl sm:text-2xl">💷</span>
                       </div>
-                      <h2 className="text-3xl font-black uppercase mb-2">Pay to Continue</h2>
-                      <p className="text-muted-foreground">One-time payment to access Instagram comments</p>
+                      <h2 className="text-2xl sm:text-3xl font-black uppercase mb-2">Pay to Continue</h2>
+                      <p className="text-sm sm:text-base text-muted-foreground">
+                        {fetchedEntries.length > 0 ? "One-time payment to pick winners" : "One-time payment to access Instagram comments"}
+                      </p>
                     </div>
 
-                    <div className="space-y-6 mb-8">
-                      <div className="flex justify-between items-center p-4 border-2 border-black bg-slate-50">
-                        <span className="font-bold uppercase">Giveaway Round</span>
-                        <span className="font-black text-xl">£5.00</span>
+                    <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
+                      <div className="flex justify-between items-center p-3 sm:p-4 border-2 border-black bg-slate-50">
+                        <span className="font-bold uppercase text-sm sm:text-base">Giveaway Round</span>
+                        <span className="font-black text-lg sm:text-xl">£5.00</span>
                       </div>
 
-                      <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded">
-                        <p className="text-sm font-medium text-blue-800">
+                      <div className="bg-blue-50 border-2 border-blue-200 p-3 sm:p-4 rounded">
+                        <p className="text-xs sm:text-sm font-medium text-blue-800">
                           ✓ Fetch all comments from your post<br />
                           ✓ Filter & pick random winners<br />
-                          ✓ Download winner announcement image
+                          ✓ Share results with your audience
                         </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="p-4 border-2 border-slate-200 rounded bg-slate-50 text-center">
-                          <span className="text-slate-500 font-medium">🔒 Secure payment via Stripe</span>
-                        </div>
                       </div>
                     </div>
 
-                    <Button
-                      onClick={handleProcessPayment}
-                      disabled={isProcessingPayment}
-                      className="w-full neo-btn-primary bg-[#E1306C] hover:bg-[#C13584] text-white text-xl py-6"
-                    >
-                      {isProcessingPayment ? (
-                        <>
-                          <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Pay £5.00 & Fetch Comments"
-                      )}
-                    </Button>
+                    {clientSecret ? (
+                      <div className="w-full min-w-0 overflow-hidden">
+                        <Elements
+                          stripe={getStripe()}
+                          options={{ clientSecret, appearance: stripeAppearance }}
+                        >
+                          <CheckoutForm
+                            onSuccess={handlePaymentSuccess}
+                            onCancel={() => { setClientSecret(null); setStep(fetchedEntries.length > 0 ? "options" : "input"); }}
+                          />
+                        </Elements>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={handleCreatePaymentIntent}
+                          disabled={isCreatingIntent}
+                          className="w-full neo-btn-primary bg-[#E1306C] hover:bg-[#C13584] text-white text-base sm:text-lg md:text-xl py-5 sm:py-6"
+                        >
+                          {isCreatingIntent ? (
+                            <>
+                              <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            fetchedEntries.length > 0 ? "Pay £5.00 & Pick Winners" : "Pay £5.00 & Fetch Comments"
+                          )}
+                        </Button>
 
-                    <Button
-                      variant="ghost"
-                      onClick={() => setStep("input")}
-                      className="w-full mt-2"
-                      disabled={isProcessingPayment}
-                    >
-                      Back to URL Input
-                    </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setStep(fetchedEntries.length > 0 ? "options" : "input")}
+                          className="w-full mt-2 text-base sm:text-lg font-bold uppercase"
+                        >
+                          {fetchedEntries.length > 0 ? "Back to Options" : "Back to URL Input"}
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
               </motion.div>
@@ -943,124 +1110,16 @@ export default function GiveawayTool() {
                   {winners.map((winner, index) => (
                     <div key={winner.id} className="space-y-4">
                       <WinnerCard winner={winner} index={index} />
-                      <div className="space-y-2">
-                        {sendWinningEmails && (
-                          <Input
-                            type="email"
-                            placeholder="Winner's email (optional)"
-                            className="neo-input"
-                            value={winnerEmails[winner.id] || ""}
-                            onChange={(e) => setWinnerEmails({ ...winnerEmails, [winner.id]: e.target.value })}
-                          />
-                        )}
-                        <Button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch("/api/generate-winner-image", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  username: winner.username,
-                                  avatar: winner.avatar,
-                                  comment: winner.comment,
-                                }),
-                              });
-
-                              if (response.ok) {
-                                const blob = await response.blob();
-                                const url = window.URL.createObjectURL(blob);
-                                const a = document.createElement("a");
-                                a.href = url;
-                                a.download = `winner-${winner.username}.jpg`;
-                                document.body.appendChild(a);
-                                a.click();
-                                window.URL.revokeObjectURL(url);
-                                document.body.removeChild(a);
-                                toast({
-                                  title: "Downloaded!",
-                                  description: "Winner image saved. You can convert SVG to PNG using any online tool.",
-                                });
-                              } else {
-                                throw new Error("Failed to generate image");
-                              }
-                            } catch (error) {
-                              toast({
-                                title: "Error",
-                                description: "Failed to download winner image",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                          variant="outline"
-                          className="w-full border-2 border-[#E1306C] text-[#E1306C] hover:bg-[#E1306C] hover:text-white"
-                        >
-                          <Instagram className="mr-2 w-4 h-4" /> Download Story Image
-                        </Button>
-                      </div>
                     </div>
                   ))}
+
                 </div>
 
                 <div className="flex justify-center py-6">
-                  <AdBanner format="horizontal" />
+                  <AdBanner type="adsense" />
                 </div>
 
-                {sendWinningEmails && (
-                  <div className="bg-yellow-50 border-2 border-yellow-300 p-4 rounded">
-                    <div className="flex items-center justify-between mb-4">
-                      <Label className="font-bold text-lg uppercase">Send Winning Emails</Label>
-                    </div>
-                    <Button
-                      onClick={async () => {
-                        const emailsToSend = winners
-                          .map(w => ({ winner: w, email: winnerEmails[w.id] }))
-                          .filter(item => item.email && item.email.includes('@'));
 
-                        if (emailsToSend.length === 0) {
-                          toast({
-                            title: "No Emails",
-                            description: "Please enter at least one winner email",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-
-                        try {
-                          const response = await fetch("/api/send-winning-emails", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              winners: emailsToSend.map(item => ({
-                                username: item.winner.username,
-                                email: item.email,
-                                comment: item.winner.comment,
-                                avatar: item.winner.avatar,
-                              })),
-                            }),
-                          });
-
-                          if (response.ok) {
-                            toast({
-                              title: "Emails Sent!",
-                              description: `Sent winning notifications to ${emailsToSend.length} winner(s)`,
-                            });
-                          } else {
-                            throw new Error("Failed to send emails");
-                          }
-                        } catch (error) {
-                          toast({
-                            title: "Error",
-                            description: "Failed to send winning emails",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      className="w-full bg-green-500 hover:bg-green-600 text-white"
-                    >
-                      Send Emails to Winners
-                    </Button>
-                  </div>
-                )}
 
                 <div className="flex justify-center pt-8">
                   <Button onClick={resetTool} variant="outline" className="border-2 border-black text-lg py-6 px-8 hover:bg-black hover:text-white transition-colors">
@@ -1072,21 +1131,21 @@ export default function GiveawayTool() {
           </AnimatePresence>
 
           <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-            <DialogContent className="neo-box-static bg-white max-w-2xl max-h-[90vh] flex flex-col">
-              <DialogHeader className="pb-4 border-b-2 border-black flex-shrink-0">
-                <DialogTitle className="text-3xl font-black uppercase">Schedule Giveaway</DialogTitle>
-                <DialogDescription className="font-bold text-slate-600 text-base mt-2">
+            <DialogContent className="neo-box-static bg-white max-w-lg max-h-[85vh] flex flex-col">
+              <DialogHeader className="pb-3 border-b-2 border-black flex-shrink-0">
+                <DialogTitle className="text-2xl font-black uppercase">Schedule Giveaway</DialogTitle>
+                <DialogDescription className="font-bold text-slate-600 text-sm mt-1">
                   Pick a date and time for this giveaway to run automatically.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="py-6 space-y-6 overflow-y-auto flex-1 min-h-0">
+              <div className="py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
                 {/* Important Notice */}
-                <div className="bg-blue-50 border-2 border-blue-500 rounded-md p-4 flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="bg-blue-50 border-2 border-blue-500 rounded-md p-3 flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-black text-blue-900 uppercase text-sm">Scheduling Rules</p>
-                    <ul className="text-sm font-medium text-blue-800 space-y-1">
+                    <p className="font-black text-blue-900 uppercase text-xs">Scheduling Rules</p>
+                    <ul className="text-xs font-medium text-blue-800 space-y-0.5">
                       <li>• Minimum: 15 minutes from now</li>
                       <li>• Maximum: 1 month in advance</li>
                       <li>• Only valid times are shown in the selectors</li>
@@ -1095,9 +1154,9 @@ export default function GiveawayTool() {
                 </div>
 
                 {/* Quick Date Selection */}
-                <div className="space-y-3">
-                  <Label className="font-black uppercase text-base">Quick Select</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="font-black uppercase text-sm">Quick Select</Label>
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -1106,7 +1165,7 @@ export default function GiveawayTool() {
                         setScheduleDate(minTime);
                         setScheduleTime(format(minTime, "HH:mm"));
                       }}
-                      className="neo-input border-2 border-black hover:bg-slate-50 py-3 text-base font-bold"
+                      className="neo-input border-2 border-black hover:bg-slate-50 py-2 text-sm font-bold"
                     >
                       Earliest (15 min)
                     </Button>
@@ -1120,16 +1179,16 @@ export default function GiveawayTool() {
                         setScheduleDate(tomorrow);
                         setScheduleTime("12:00");
                       }}
-                      className="neo-input border-2 border-black hover:bg-slate-50 py-3 text-base font-bold"
+                      className="neo-input border-2 border-black hover:bg-slate-50 py-2 text-sm font-bold"
                     >
                       Tomorrow (Noon)
                     </Button>
                   </div>
                 </div>
 
-                {/* Calendar - Made Bigger */}
-                <div className="space-y-3">
-                  <Label className="font-black uppercase text-base">Or Pick a Date</Label>
+                {/* Calendar - Compact */}
+                <div className="space-y-2">
+                  <Label className="font-black uppercase text-sm">Or Pick a Date</Label>
                   <div className="flex justify-center py-2">
                     <Calendar
                       mode="single"
@@ -1197,8 +1256,8 @@ export default function GiveawayTool() {
                 </div>
 
                 {/* Time Selection with Scrollable Pickers */}
-                <div className="space-y-3">
-                  <Label className="font-black uppercase text-base">Select Time</Label>
+                <div className="space-y-2">
+                  <Label className="font-black uppercase text-sm">Select Time</Label>
                   <div className="flex items-end gap-4">
                     {/* Hours Select */}
                     <div className="flex-1 space-y-2">

@@ -18,6 +18,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/tool", label: "Instagram Picker" },
     { href: "/spin-the-wheel", label: "Spin the Wheel" },
     { href: "/random-name-picker", label: "Name Picker" },
+    { href: "/press", label: "Media Kit" },
+    { href: "/contact", label: "Contact" },
   ];
 
   return (
@@ -119,12 +121,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-16 md:py-24">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-8 md:py-12">
         {children}
       </main>
 
       <footer className="border-t-4 border-black bg-white mt-auto overflow-hidden">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-20 md:py-32">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-12 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-16">
             <div className="md:col-span-4 space-y-8">
               <div className="flex items-center gap-3">
@@ -157,12 +159,42 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/coming-soon" className="hover:text-primary transition-colors flex items-center gap-2 group opacity-60"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> YouTube Picker (Soon)</Link></li>
                 <li><Link href="/coming-soon" className="hover:text-primary transition-colors flex items-center gap-2 group opacity-60"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> TikTok Picker (Soon)</Link></li>
               </ul>
+            <div className="md:col-span-5 space-y-6">
+              <h4 className="font-black text-xl uppercase tracking-widest border-b-4 border-primary pb-2 inline-block">Tools</h4>
+              <div className="space-y-4">
+                <p className="text-xs font-black uppercase text-primary">Main</p>
+                <ul className="space-y-2 font-bold text-lg">
+                  <li><Link href="/tool" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-primary group-hover:bg-primary" /> Instagram Picker</Link></li>
+                </ul>
+                <p className="text-xs font-black uppercase text-muted-foreground pt-2">Working</p>
+                <ul className="space-y-2 font-bold text-base">
+                  <li><Link href="/instagram-comment-scraper" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Comment Getter</Link></li>
+                  <li><Link href="/wheel" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Wheel of Names</Link></li>
+                  <li><Link href="/picker" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-black group-hover:bg-primary" /> Random Picker</Link></li>
+                </ul>
+                <p className="text-xs font-black uppercase text-muted-foreground pt-2">Coming Soon</p>
+                <ul className="space-y-2 font-bold text-sm text-muted-foreground">
+                  <li><Link href="/youtube" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-slate-300 group-hover:bg-primary" /> YouTube</Link></li>
+                  <li><Link href="/tiktok" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-slate-300 group-hover:bg-primary" /> TikTok</Link></li>
+                  <li><Link href="/facebook-picker" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-slate-300 group-hover:bg-primary" /> Facebook</Link></li>
+                  <li><Link href="/twitter-picker" className="hover:text-primary transition-colors flex items-center gap-2 group"><div className="w-2 h-2 bg-slate-300 group-hover:bg-primary" /> Twitter</Link></li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div className="mt-20 pt-10 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
+          {/* Trustpilot */}
+          <div className="mt-10 flex justify-center">
+            <div className="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="698f4179cd2640ab9bfcee91" data-style-height="52px" data-style-width="100%" data-token="c36af70c-349b-4644-b258-8f7e234df2de">
+              <a href="https://www.trustpilot.com/review/pickusawinner.com" target="_blank" rel="noopener">Trustpilot</a>
+            </div>
+          </div>
+
+          <div className="mt-12 pt-6 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="font-black uppercase tracking-widest text-sm text-center md:text-left">© 2026 PickUsAWinner. All rights reserved.</p>
             <div className="flex gap-8 font-black uppercase tracking-widest text-[10px] md:text-xs">
+              <Link href="/press" className="hover:underline underline-offset-4">Press</Link>
+              <Link href="/contact" className="hover:underline underline-offset-4">Contact</Link>
               <Link href="/privacy" className="hover:underline underline-offset-4">Privacy Policy</Link>
               <Link href="/terms" className="hover:underline underline-offset-4">Terms of Service</Link>
               <span className="text-muted-foreground">Certified Random</span>

@@ -5,6 +5,7 @@ export interface EmailOptions {
     subject: string;
     text: string;
     html?: string;
+    replyTo?: string;
 }
 
 // Create reusable transporter
@@ -46,7 +47,7 @@ function getTransporter(): nodemailer.Transporter | null {
     }
 }
 
-export async function sendEmail({ to, subject, text, html }: EmailOptions): Promise<boolean> {
+export async function sendEmail({ to, subject, text, html, replyTo }: EmailOptions): Promise<boolean> {
     const emailTransporter = getTransporter();
 
     if (!emailTransporter) {
@@ -56,7 +57,7 @@ export async function sendEmail({ to, subject, text, html }: EmailOptions): Prom
     }
 
     try {
-        const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@giveaway-engine.com";
+        const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@pickusawinner.com";
 
         const mailOptions = {
             from: fromEmail,
@@ -64,6 +65,7 @@ export async function sendEmail({ to, subject, text, html }: EmailOptions): Prom
             subject,
             text,
             html: html || text.replace(/\n/g, "<br>"), // Simple HTML conversion if no HTML provided
+            ...(replyTo && { replyTo }),
         };
 
         const info = await emailTransporter.sendMail(mailOptions);

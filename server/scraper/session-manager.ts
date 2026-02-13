@@ -26,15 +26,31 @@ export class SessionManager {
     }
 
     /**
-     * Load saved session from disk
+     * Load saved session from disk or environment variable
      */
     private loadSession(): void {
         try {
+            // Priority 1: Check file system (local dev or deployed file)
             if (fs.existsSync(SESSION_FILE)) {
                 const data = fs.readFileSync(SESSION_FILE, "utf-8");
                 this.session = JSON.parse(data);
-                log(`Loaded saved session for ${this.session?.username}`, "scraper");
+                log(`Loaded saved session from file for ${this.session?.username}`, "scraper");
+                return;
             }
+
+            // Priority 2: Check environment variable (Render/Cloud)
+            if (process.env.INSTAGRAM_SESSION_DATA) {
+                try {
+                    const data = process.env.INSTAGRAM_SESSION_DATA;
+                    this.session = JSON.parse(data);
+                    log(`Loaded saved session from env var for ${this.session?.username}`, "scraper");
+                    return;
+                } catch (e) {
+                    log(`Failed to parse INSTAGRAM_SESSION_DATA: ${e}`, "error");
+                }
+            }
+
+            log("No saved session found (checked file and env var)", "scraper");
         } catch (error) {
             log(`Failed to load session: ${error}`, "scraper");
         }
@@ -74,14 +90,14 @@ export class SessionManager {
         try {
             // Wait a bit for the dialog to appear
             await delay(2000);
-            
+
             // Try to find and click cookie consent button using evaluate
             const clicked = await page.evaluate(() => {
                 const buttons = Array.from(document.querySelectorAll('button'));
                 for (const button of buttons) {
                     const text = (button.textContent || '').toLowerCase().trim();
                     // Look for "Accept All", "Accept all cookies", etc.
-                    if ((text.includes('accept') && text.includes('all')) || 
+                    if ((text.includes('accept') && text.includes('all')) ||
                         (text.includes('accept') && text.includes('cookies')) ||
                         text === 'accept all') {
                         (button as HTMLElement).click();
@@ -132,7 +148,7 @@ export class SessionManager {
                     continue;
                 }
             }
-            
+
             if (attempt < retries - 1) {
                 log(`Login form not found, retrying... (attempt ${attempt + 1}/${retries})`, "scraper");
                 await delay(2000);
@@ -149,18 +165,18 @@ export class SessionManager {
      */
     async login(browser: Browser, username: string, password: string): Promise<boolean> {
         const page = await browser.newPage();
-        
+
         try {
             log(`Attempting to login as ${username}`, "scraper");
-            
+
             // Set viewport
             await page.setViewport({ width: 1366, height: 768 });
-            
+
             // Set user agent to avoid detection
             await page.setUserAgent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             );
-            
+
             // Navigate to login page
             log("Navigating to Instagram login page...", "scraper");
             await page.goto("https://www.instagram.com/accounts/login/", {
@@ -186,7 +202,7 @@ export class SessionManager {
                 }
                 throw new Error("Could not find login form after handling cookie consent");
             }
-            
+
             // Find username input using multiple selectors
             let usernameInput = await page.$('input[name="username"]') as ElementHandle<HTMLInputElement> | null;
             if (!usernameInput) {
@@ -219,7 +235,7 @@ export class SessionManager {
             log("Filling in credentials...", "scraper");
             await usernameInput.type(username, { delay: 100 });
             await passwordInput.type(password, { delay: 100 });
-            
+
             // Find and click login button
             let loginButton = await page.$('button[type="submit"]') as ElementHandle<HTMLButtonElement> | null;
             if (!loginButton) {
@@ -239,7 +255,7 @@ export class SessionManager {
 
             log("Clicking login button...", "scraper");
             await loginButton.click();
-            
+
             // Wait for navigation after login
             try {
                 await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 20000 });
@@ -247,11 +263,11 @@ export class SessionManager {
                 // Sometimes navigation doesn't trigger, wait a bit and check URL
                 await delay(3000);
             }
-            
+
             // Check if login was successful
             const currentUrl = page.url();
             log(`Current URL after login attempt: ${currentUrl}`, "scraper");
-            
+
             if (currentUrl.includes("/accounts/login") || currentUrl.includes("/challenge")) {
                 log("Login failed or challenge required", "scraper");
                 await page.close();
@@ -281,7 +297,7 @@ export class SessionManager {
 
             // Get cookies
             const cookies = await page.cookies();
-            
+
             // Save session
             this.saveSession({
                 cookies,
@@ -295,7 +311,7 @@ export class SessionManager {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log(`Login error: ${errorMessage}`, "scraper");
-            
+
             // Take screenshot for debugging
             try {
                 await page.screenshot({ path: 'login-error.png', fullPage: true });
@@ -303,7 +319,7 @@ export class SessionManager {
             } catch (e) {
                 // Ignore screenshot errors
             }
-            
+
             await page.close();
             return false;
         }
@@ -328,30 +344,45 @@ export class SessionManager {
     }
 
     /**
-     * Verify if session is still valid by checking a page
+     * Verify if session is still valid by checking a page.
+     * Uses a lightweight check — just loads the page and checks we're not redirected to login.
      */
     async verifySession(page: Page): Promise<boolean> {
         try {
+            // Use domcontentloaded — much faster than networkidle2,
+            // which often times out on Instagram's heavy homepage
             await page.goto("https://www.instagram.com/", {
-                waitUntil: "networkidle2",
-                timeout: 15000,
+                waitUntil: "domcontentloaded",
+                timeout: 20000,
             });
 
-            // Check if we're logged in (not on login page)
+            // Give the page a moment to settle (redirects happen quickly)
+            await delay(2000);
+
+            // Check if we got redirected to login
             const url = page.url();
-            if (url.includes("/accounts/login")) {
+            if (url.includes("/accounts/login") || url.includes("/challenge")) {
                 log("Session expired - redirected to login", "scraper");
                 this.clearSession();
                 return false;
             }
 
-            // Check for username in page (logged in indicator)
-            const isLoggedIn = await page.evaluate(() => {
-                return document.querySelector('a[href*="/accounts/"]') !== null;
+            // Quick API check — this is the most reliable way to verify login.
+            // If session cookies are valid, this returns user data.
+            const isLoggedIn = await page.evaluate(async () => {
+                try {
+                    const res = await fetch("https://www.instagram.com/api/v1/users/web_profile_info/?username=instagram", {
+                        credentials: "include",
+                        headers: { "X-IG-App-ID": "936619743392459" },
+                    });
+                    return res.ok || res.status === 404; // 404 = user not found but we're authenticated
+                } catch {
+                    return false;
+                }
             });
 
             if (!isLoggedIn) {
-                log("Session appears invalid", "scraper");
+                log("Session appears invalid (API check failed)", "scraper");
                 this.clearSession();
                 return false;
             }
@@ -359,8 +390,11 @@ export class SessionManager {
             log("Session is valid", "scraper");
             return true;
         } catch (error) {
-            log(`Session verification error: ${error}`, "scraper");
-            return false;
+            // Timeout or navigation error — don't clear session,
+            // it might just be a slow connection. Try to proceed anyway.
+            log(`Session verification inconclusive: ${error}`, "scraper");
+            log("Proceeding with saved session anyway (cookies are set)", "scraper");
+            return true;
         }
     }
 

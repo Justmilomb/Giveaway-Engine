@@ -2,8 +2,10 @@ import Layout from "@/components/layout";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles, RotateCcw, Users, Dice5, Instagram } from "lucide-react";
+import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles, Instagram, Youtube, Facebook, Twitter } from "lucide-react";
 import heroImage from "@/assets/hero-giveaway.png";
 import { SEO } from "@/components/seo";
+import { AdBanner } from "@/components/AdBanner";
 
 export default function Home() {
   const faqStructuredData = {
@@ -20,10 +22,11 @@ export default function Home() {
       },
       {
         "@type": "Question",
-        "name": "Is PickUsAWinner free to use?",
+        "name": "Do I need to sign up or log in to use PickUsAWinner?",
         "acceptedAnswer": {
           "@type": "Answer",
           "text": "Yes! Our spin the wheel, random name picker, and random option picker tools are 100% free with no limits. Instagram comment fetching includes free credits, with additional credits available as a one-time purchase — no monthly subscriptions."
+          "text": "No. PickUsAWinner requires no signup and no login. Use the tool instantly. One-time payment for extra credits when needed. Free to start."
         }
       },
       {
@@ -72,18 +75,25 @@ export default function Home() {
         structuredData={faqStructuredData}
       />
       <div className="space-y-16 sm:space-y-24 md:space-y-32 pb-16 sm:pb-32">
+        title="Instagram Giveaway Generator | No Signup, No Login"
+        description="Instagram giveaway generator & comment picker. Pick random winners from Instagram comments. No signup, no login, one-time payment. Free to start."
+        url="/"
+        structuredData={faqStructuredData}
+      />
+      <div className="space-y-10 sm:space-y-14 md:space-y-20 pb-10 sm:pb-16">
 
         {/* Hero Section */}
-        <section className="relative pt-8 sm:pt-12 md:pt-24 lg:pt-32 overflow-hidden">
+        <section className="relative pt-4 sm:pt-8 md:pt-12 overflow-hidden">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 md:gap-16 lg:gap-24 items-center">
-              <div className="space-y-6 sm:space-y-8 md:space-y-10 z-10 text-center lg:text-left">
+            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16 items-start lg:min-h-0">
+              <div className="space-y-6 sm:space-y-8 md:space-y-10 z-20 relative text-center lg:text-left order-2 lg:order-1">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="inline-block bg-accent text-white font-black px-3 sm:px-6 py-1.5 sm:py-2 border-2 sm:border-4 border-black shadow-[3px_3px_0px_0px_#000] sm:shadow-neo uppercase tracking-wider sm:tracking-widest transform -rotate-2 text-sm sm:text-base"
                 >
                   Trusted by Creators Worldwide
+                  No Signup • No Login • One-Time Pay
                 </motion.div>
 
                 <motion.h1
@@ -95,6 +105,9 @@ export default function Home() {
                   PICK US <br className="hidden sm:block" />
                   <span className="text-primary drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">
                     A WINNER.
+                  GIVEAWAY <br className="hidden sm:block" />
+                  <span className="text-primary drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">
+                    GENERATOR.
                   </span>
                 </motion.h1>
 
@@ -105,6 +118,7 @@ export default function Home() {
                   className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-800 max-w-xl mx-auto lg:mx-0 leading-tight px-2 sm:px-0"
                 >
                   The simplest random selection toolkit on the web. Instagram giveaways, spin the wheel, name picker & more — all cryptographically fair.
+                  Instagram giveaway generator & comment picker. No signup, no login, one-time payment. Free to start.
                 </motion.p>
 
                 <motion.div
@@ -126,7 +140,7 @@ export default function Home() {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="relative mt-8 lg:mt-0"
+                className="relative mt-8 lg:mt-0 order-1 lg:order-2 flex justify-center lg:justify-end"
               >
                 <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 md:-top-10 md:-right-10 w-full h-full bg-secondary border-2 sm:border-4 border-black z-0 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg"></div>
                 <img
@@ -140,6 +154,20 @@ export default function Home() {
                   className="relative z-10 w-full border-2 sm:border-4 border-black bg-white p-2 sm:p-4 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg"
                   style={{ aspectRatio: '3/2' }}
                 />
+                <div className="relative w-full max-w-md lg:max-w-lg">
+                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3 w-full h-full bg-secondary border-2 sm:border-4 border-black z-0 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg"></div>
+                  <img
+                    src={heroImage}
+                    alt="Pick Us A Winner - The Ultimate Instagram Comment Picker"
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    width="600"
+                    height="400"
+                    className="relative z-10 w-full border-2 sm:border-4 border-black bg-white p-2 sm:p-4 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg object-contain"
+                    style={{ aspectRatio: '3/2' }}
+                  />
+                </div>
               </motion.div>
             </div>
           </div>
@@ -219,7 +247,17 @@ export default function Home() {
                 </Link>
               </motion.div>
             ))}
+        {/* Marquee with better branding */}
+        <section className="full-bleed bg-primary text-white py-4 sm:py-6 md:py-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
+          <div className="flex gap-8 sm:gap-16 text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] animate-marquee">
+            <span>No Signup • No Login • One-Time Pay • Instagram Giveaway Generator • Instagram Comments Picker</span>
+            <span>No Signup • No Login • One-Time Pay • Instagram Giveaway Generator • Instagram Comments Picker</span>
           </div>
+        </section>
+
+        {/* AdSense Banner */}
+        <section className="container mx-auto px-4">
+          <AdBanner type="adsense" className="w-full" />
         </section>
 
         {/* Steps Section */}
@@ -323,6 +361,78 @@ export default function Home() {
             <Link href="/giveaway-generator" className="text-primary font-black uppercase text-sm hover:underline underline-offset-4 inline-flex items-center gap-1">
               View all platform details <ArrowRight className="w-4 h-4" />
             </Link>
+        {/* Tools Hierarchy: 1. Instagram (main) 2. Working mini tools 3. Coming soon → Instagram */}
+        <section className="container mx-auto px-4 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-black uppercase mb-5 text-center">All Our Tools</h2>
+          <div className="space-y-5 max-w-4xl mx-auto">
+            {/* Tier 1: Main - Instagram */}
+            <div className="border-4 border-black bg-primary/10 p-4 sm:p-6">
+              <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">Main Tool</p>
+              <Link href="/tool" className="flex items-center gap-4 group">
+                <div className="bg-instagram p-3 border-2 border-black text-white">
+                  <Instagram className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl sm:text-2xl font-black uppercase group-hover:text-primary transition-colors">Instagram Giveaway Generator</h3>
+                  <p className="text-sm font-medium text-muted-foreground">Pick random winners from comments. No signup, no login. Filter, schedule, done.</p>
+                </div>
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              </Link>
+            </div>
+
+            {/* Tier 2: Working mini tools */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Working Tools</p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {[
+                  { href: "/instagram-comment-scraper", label: "Comment Getter", desc: "Get Instagram comments from any post" },
+                  { href: "/wheel", label: "Wheel of Names", desc: "Spin the wheel - random name generator" },
+                  { href: "/picker", label: "Random Picker", desc: "Random name generator - pick from any list" },
+                ].map((t) => (
+                  <Link key={t.href} href={t.href} className="block p-3 sm:p-4 border-2 border-black bg-white hover:bg-secondary transition-colors group">
+                    <h4 className="font-black uppercase group-hover:text-primary text-sm sm:text-base">{t.label}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Tier 3: Coming soon → Instagram */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Coming Soon</p>
+              <p className="text-sm font-medium text-muted-foreground mb-2">These will launch later. Use Instagram Picker for now.</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { href: "/youtube", label: "YouTube", icon: <Youtube className="w-4 h-4" /> },
+                  { href: "/tiktok", label: "TikTok", icon: null },
+                  { href: "/facebook-picker", label: "Facebook", icon: <Facebook className="w-4 h-4" /> },
+                  { href: "/twitter-picker", label: "Twitter", icon: <Twitter className="w-4 h-4" /> },
+                ].map((t) => (
+                  <Link key={t.href} href={t.href} className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-dashed border-slate-300 text-slate-600 hover:border-black hover:text-black transition-colors text-sm font-bold">
+                    {t.icon}
+                    {t.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Press / Media Kit - encourages backlinks */}
+        <section className="container mx-auto px-4 py-6 text-center">
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Press & Media</p>
+          <p className="text-base font-medium mb-4">
+            Featured on creator blogs and giveaway guides. Link to us or download our logo.
+          </p>
+          <Link href="/press" className="inline-flex items-center gap-2 px-6 py-3 border-2 border-black font-bold hover:bg-black hover:text-white transition-colors">
+            Get Media Kit & Download Logo
+          </Link>
+        </section>
+
+        {/* Trustpilot Widget */}
+        <section className="flex justify-center px-2 sm:px-0">
+          <div className="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="698f4179cd2640ab9bfcee91" data-style-height="52px" data-style-width="100%" data-token="c36af70c-349b-4644-b258-8f7e234df2de">
+            <a href="https://www.trustpilot.com/review/pickusawinner.com" target="_blank" rel="noopener">Trustpilot</a>
           </div>
         </section>
 
@@ -331,7 +441,7 @@ export default function Home() {
           <motion.div
             whileInView={{ scale: [0.95, 1], rotate: [-1, 0] }}
             viewport={{ once: true }}
-            className="bg-primary text-white p-6 sm:p-10 md:p-16 lg:p-20 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg text-center space-y-4 sm:space-y-6 md:space-y-8"
+            className="bg-primary text-white p-6 sm:p-8 md:p-10 lg:p-14 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg text-center space-y-4 sm:space-y-6 md:space-y-8"
           >
             <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-black uppercase leading-none">Ready to Pick <br className="hidden sm:block" /> a Winner?</h2>
             <p className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold max-w-2xl mx-auto opacity-90 px-2">
@@ -385,5 +495,7 @@ export default function Home() {
       {/* Organization structured data */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgStructuredData) }} />
     </Layout>
+      </div >
+    </Layout >
   );
 }

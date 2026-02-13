@@ -1,37 +1,39 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { z } from "zod";
 import { storage } from "./storage";
 import {
   fetchInstagramComments,
-  generateMockComments,
   extractPostId,
 } from "./instagram";
+import { InstagramScraper } from "./scraper/instagram-scraper";
 import { setupAuth } from "./auth";
 import { log } from "./log";
 import { format } from "date-fns";
+import Stripe from "stripe";
 
-// Security imports
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+// Track PaymentIntent IDs to prevent double-redemption
+const redeemedPaymentIntents = new Set<string>();
+
+// Security imports — kept: rate limiting, validation, sanitization
 import {
   globalRateLimiter,
   instagramRateLimiter,
   giveawayRateLimiter,
   emailRateLimiter,
   imageRateLimiter,
-  blockCheckMiddleware,
-  creditCheckMiddleware,
-  createTrackingMiddleware,
   validateRequest,
   validateInstagramRequest,
   validateGiveawayRequest,
   validateEmailRequest,
   adminAuthMiddleware,
-  checkCredits,
-  consumeCredit,
   generatePurchaseToken,
   redeemPurchaseToken,
+  consumeCredit,
   getSecurityStats,
   getClientIP,
-  SECURITY_CONFIG,
 } from "./security";
 
 export async function registerRoutes(
@@ -47,9 +49,6 @@ export async function registerRoutes(
   // Apply global rate limiting to all /api routes
   app.use("/api", globalRateLimiter);
 
-  // Apply block check to all /api routes
-  app.use("/api", blockCheckMiddleware);
-
   // Apply request validation to all /api routes
   app.use("/api", validateRequest);
 
@@ -62,81 +61,79 @@ export async function registerRoutes(
   });
 
   // ============================================
-  // CREDIT SYSTEM ENDPOINTS
-  // ============================================
-
-  // Check credits for current IP
-  app.get("/api/credits", (req, res) => {
-    const ip = getClientIP(req);
-    const status = checkCredits(ip);
-    return res.json({
-      credits: status.remaining,
-      freeCreditsRemaining: status.freeRemaining,
-      hasCredits: status.hasCredits
-    });
-  });
-
-  // Redeem a purchase token
-  app.post("/api/credits/redeem", (req, res) => {
-    const { token } = req.body;
-
-    if (!token || typeof token !== "string") {
-      return res.status(400).json({ error: "Missing or invalid token" });
-    }
-
-    const ip = getClientIP(req);
-    const result = redeemPurchaseToken(ip, token);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const status = checkCredits(ip);
-    return res.json({
-      success: true,
-      creditsAdded: result.credits,
-      totalCredits: status.remaining
-    });
-  });
-
-  // ============================================
   // PAYMENT ENDPOINTS
   // ============================================
 
-  // Process payment and generate access token
-  // In production, this would integrate with Stripe
-  app.post("/api/payment/process", async (req, res) => {
+  // Expose Stripe publishable key to the frontend
+  app.get("/api/config", (_req, res) => {
+    res.json({
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  });
+
+  // Create a Stripe PaymentIntent
+  app.post("/api/payment/create-intent", async (req, res) => {
     try {
-      const { amount, url } = req.body;
-      const ip = getClientIP(req);
+      const { url } = req.body;
 
-      // Validate the payment amount
-      if (amount !== 500) { // £5.00 in pence
-        return res.status(400).json({ error: "Invalid payment amount" });
-      }
-
-      // Validate URL is provided
       if (!url || typeof url !== "string" || !url.includes("instagram.com")) {
         return res.status(400).json({ error: "Valid Instagram URL required" });
       }
 
-      // TODO: In production, integrate with Stripe here
-      // For now, simulate successful payment and generate token
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 500, // £5.00 in pence
+        currency: "gbp",
+        automatic_payment_methods: { enabled: true },
+        metadata: { url },
+      });
+
+      return res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      log(`Stripe Create Intent Error: ${error}`, "error");
+      return res.status(500).json({
+        error: "Failed to create payment. Please try again.",
+      });
+    }
+  });
+
+  // Verify payment succeeded and issue a purchase token
+  app.post("/api/payment/confirm", async (req, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      const ip = getClientIP(req);
+
+      if (!paymentIntentId || typeof paymentIntentId !== "string") {
+        return res.status(400).json({ error: "Payment intent ID required" });
+      }
+
+      // Prevent double-redemption
+      if (redeemedPaymentIntents.has(paymentIntentId)) {
+        return res.status(400).json({ error: "This payment has already been redeemed" });
+      }
+
+      // Verify with Stripe that the payment actually succeeded
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.status !== "succeeded") {
+        return res.status(400).json({ error: "Payment has not succeeded" });
+      }
+
+      // Mark as redeemed
+      redeemedPaymentIntents.add(paymentIntentId);
 
       // Generate a one-time use payment token
-      const paymentToken = generatePurchaseToken(1); // 1 API call
+      const paymentToken = generatePurchaseToken(1);
 
-      console.log(`[Payment] Processed £5.00 payment from ${ip}, token: ${paymentToken}`);
+      console.log(`[Payment] Verified Stripe payment ${paymentIntentId} from ${ip}, token: ${paymentToken}`);
 
       return res.json({
         success: true,
-        paymentToken: paymentToken,
-        message: "Payment successful. You can now fetch comments."
+        paymentToken,
       });
     } catch (error) {
-      log(`Payment Error: ${error}`, "error");
+      log(`Stripe Confirm Error: ${error}`, "error");
       return res.status(500).json({
-        error: "Payment processing failed. Please try again."
+        error: "Payment verification failed. Please try again.",
       });
     }
   });
@@ -160,16 +157,10 @@ export async function registerRoutes(
           });
         }
 
-        // Also return credit status so frontend knows if they can proceed
-        const ip = getClientIP(req);
-        const creditStatus = checkCredits(ip);
-
         return res.json({
           valid: true,
           postId,
           url,
-          credits: creditStatus.remaining,
-          hasCredits: creditStatus.hasCredits
         });
       } catch (error) {
         log(`Validation Error: ${error}`, "error");
@@ -181,15 +172,13 @@ export async function registerRoutes(
     }
   );
 
-  // Instagram comments endpoint - PROTECTED - REQUIRES PAYMENT
+  // Instagram comments endpoint - REQUIRES PAYMENT
   app.post("/api/instagram/comments",
     validateInstagramRequest,
     instagramRateLimiter,
-    createTrackingMiddleware("instagram"),
     async (req, res) => {
       try {
-        const { url, demo, paymentToken } = req.body;
-        const ip = getClientIP(req);
+        const { url, paymentToken } = req.body;
 
         const postId = extractPostId(url);
         if (!postId) {
@@ -198,44 +187,29 @@ export async function registerRoutes(
           });
         }
 
-        // Demo mode - return mock data (FREE)
-        if (demo) {
-          const mockComments = generateMockComments(150);
+        const ip = getClientIP(req);
+        let usedPaymentToken = false;
 
-          return res.json({
-            entries: mockComments.map(c => ({
-              id: c.id,
-              username: c.username,
-              avatar: c.avatar,
-              comment: c.text,
-              platform: "instagram" as const,
-              timestamp: c.timestamp,
-              fraudScore: 0,
-            })),
-            total: mockComments.length,
-            demo: true,
-            message: "Demo mode - sample data loaded.",
-          });
+        // Use payment token if provided, otherwise consume free credits
+        if (paymentToken && typeof paymentToken === "string") {
+          usedPaymentToken = true;
+          const tokenResult = redeemPurchaseToken(ip, paymentToken);
+          if (!tokenResult.success) {
+            return res.status(402).json({
+              error: tokenResult.error || "Invalid payment token",
+              paymentRequired: true
+            });
+          }
+        } else {
+          if (!consumeCredit(ip)) {
+            return res.status(402).json({
+              error: "No credits remaining. Please complete payment.",
+              paymentRequired: true
+            });
+          }
         }
 
-        // PAYMENT REQUIRED - must have valid payment token
-        if (!paymentToken || typeof paymentToken !== "string") {
-          return res.status(402).json({
-            error: "Payment required. Please complete payment before fetching comments.",
-            paymentRequired: true
-          });
-        }
-
-        // Verify the payment token
-        const tokenResult = redeemPurchaseToken(ip, paymentToken);
-        if (!tokenResult.success) {
-          return res.status(402).json({
-            error: tokenResult.error || "Invalid payment token",
-            paymentRequired: true
-          });
-        }
-
-        // Payment successful - now make the API call
+        // Payment/credits verified - now make the API call
         // Pass the full URL so we can extract the username from it
         const result = await fetchInstagramComments(url);
 
@@ -261,6 +235,7 @@ export async function registerRoutes(
             platform: "instagram" as const,
             timestamp: c.timestamp,
             fraudScore: Math.min(fraudScore, 100),
+            userId: c.userId,
           };
         });
 
@@ -269,7 +244,7 @@ export async function registerRoutes(
           total: result.total,
           postInfo: result.postInfo,
           demo: false,
-          paid: true,
+          paid: usedPaymentToken,
           fraudStats: {
             flagged: entriesWithFraud.filter((e: any) => e.fraudScore > 20).length,
             total: entriesWithFraud.length,
@@ -279,6 +254,40 @@ export async function registerRoutes(
         log(`Instagram Comments API Error: ${error}`, "error");
         return res.status(500).json({
           error: error instanceof Error ? error.message : "Failed to fetch comments"
+        });
+      }
+    }
+  );
+
+  // Check if users follow the logged-in Instagram account
+  app.post("/api/instagram/check-followers",
+    instagramRateLimiter,
+    async (req, res) => {
+      try {
+        const { userIds } = req.body;
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+          return res.status(400).json({ error: "userIds array is required" });
+        }
+
+        // Limit to 20 users per request
+        const limitedIds = userIds.slice(0, 20).filter((id: any) => typeof id === "string" && id.length > 0);
+
+        if (limitedIds.length === 0) {
+          return res.status(400).json({ error: "No valid user IDs provided" });
+        }
+
+        const scraper = new InstagramScraper();
+        try {
+          const results = await scraper.checkFollowers(limitedIds);
+          return res.json({ results });
+        } finally {
+          await scraper.close();
+        }
+      } catch (error) {
+        log(`Follower Check Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to check follower status"
         });
       }
     }
@@ -311,17 +320,33 @@ export async function registerRoutes(
     return { valid: true };
   }
 
-  // Schedule Giveaway Endpoint - PROTECTED
+  // Schedule Giveaway Endpoint
   app.post("/api/giveaways",
     giveawayRateLimiter,
     validateGiveawayRequest,
-    createTrackingMiddleware("giveaway"),
     async (req, res) => {
       try {
-        const { scheduledFor, config, status, userId } = req.body;
+        const { scheduledFor, config, status, userId, paymentToken } = req.body;
 
         if (!scheduledFor || !config) {
           return res.status(400).send("Missing required fields");
+        }
+
+        // Payment required for scheduled giveaways
+        if (!paymentToken || typeof paymentToken !== "string") {
+          return res.status(402).json({
+            error: "Payment required. Please complete payment before scheduling.",
+            paymentRequired: true
+          });
+        }
+
+        const ip = getClientIP(req);
+        const tokenResult = redeemPurchaseToken(ip, paymentToken);
+        if (!tokenResult.success) {
+          return res.status(402).json({
+            error: tokenResult.error || "Invalid payment token",
+            paymentRequired: true
+          });
         }
 
         // Validate email is provided (required for anonymous giveaways)
@@ -341,13 +366,10 @@ export async function registerRoutes(
           return res.status(400).json({ error: timeValidation.error });
         }
 
-        // Track IP with giveaway for abuse prevention
-        const ip = getClientIP(req);
-
         const giveaway = await storage.createGiveaway({
           userId: userId || "anonymous",
           scheduledFor: scheduledDate,
-          config: { ...config, creatorIP: ip },
+          config,
           status: status || "pending"
         });
 
@@ -502,94 +524,7 @@ export async function registerRoutes(
   // IMAGE & EMAIL ENDPOINTS - PROTECTED
   // ============================================
 
-  // Winner Image Generator
-  app.post("/api/generate-winner-image",
-    imageRateLimiter,
-    createTrackingMiddleware("image"),
-    async (req, res) => {
-      try {
-        const { username, avatar, comment, prize } = req.body;
 
-        if (!username || typeof username !== "string") {
-          return res.status(400).json({ error: "Username is required" });
-        }
-
-        // Sanitize inputs
-        const safeUsername = username.slice(0, 50);
-        const safeComment = comment ? comment.slice(0, 500) : undefined;
-        const safePrize = prize ? prize.slice(0, 100) : undefined;
-
-        const { generateWinnerImageJPEG } = await import("./image");
-        const imageBuffer = await generateWinnerImageJPEG({
-          username: safeUsername,
-          avatar,
-          comment: safeComment,
-          prize: safePrize
-        });
-
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('Content-Disposition', `attachment; filename="winner-${safeUsername}.jpg"`);
-        res.setHeader('Cache-Control', 'no-cache');
-        res.send(imageBuffer);
-      } catch (error) {
-        log(`Image Generation Error: ${error}`, "error");
-        return res.status(500).json({
-          error: error instanceof Error ? error.message : "Failed to generate image"
-        });
-      }
-    }
-  );
-
-  // Send Winning Emails - PROTECTED
-  app.post("/api/send-winning-emails",
-    emailRateLimiter,
-    validateEmailRequest,
-    createTrackingMiddleware("email"),
-    async (req, res) => {
-      try {
-        const { winners } = req.body;
-
-        const { sendEmail } = await import("./email");
-        const { getWinnerEmailHTML, getWinnerEmailText } = await import("./email-templates");
-        const results = [];
-
-        for (const winner of winners) {
-          if (!winner.email || !winner.username) {
-            continue;
-          }
-
-          const sent = await sendEmail({
-            to: winner.email,
-            subject: "🎉 Congratulations! You're a Giveaway Winner!",
-            text: getWinnerEmailText({
-              username: winner.username,
-              comment: winner.comment,
-              prize: winner.prize,
-            }),
-            html: getWinnerEmailHTML({
-              username: winner.username,
-              comment: winner.comment,
-              prize: winner.prize,
-            }),
-          });
-
-          results.push({ username: winner.username, email: winner.email, sent });
-        }
-
-        return res.json({
-          success: true,
-          sent: results.filter(r => r.sent).length,
-          total: results.length,
-          results,
-        });
-      } catch (error) {
-        log(`Send Winning Emails Error: ${error}`, "error");
-        return res.status(500).json({
-          error: error instanceof Error ? error.message : "Failed to send winning emails"
-        });
-      }
-    }
-  );
 
   // ============================================
   // ANALYTICS - ADMIN ONLY
@@ -665,6 +600,212 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // AD ENDPOINTS
+  // ============================================
+
+  // Get a random active ad
+  app.get("/api/ads/random", async (req, res) => {
+    try {
+      const ads = await storage.getActiveAds();
+      if (ads.length === 0) {
+        return res.json({ ad: null });
+      }
+
+      // Simple random selection
+      const randomAd = ads[Math.floor(Math.random() * ads.length)];
+
+      // Async increment view stats (don't await to keep response fast)
+      storage.incrementAdStats(randomAd.id, 'view').catch(err =>
+        console.error("Failed to increment ad view:", err)
+      );
+
+      return res.json({ ad: randomAd });
+    } catch (error) {
+      log(`Get Random Ad Error: ${error}`, "error");
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to fetch ad"
+      });
+    }
+  });
+
+  // Track ad click
+  app.post("/api/ads/:id/click", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const ad = await storage.getAd(id);
+
+      if (!ad) {
+        return res.status(404).json({ error: "Ad not found" });
+      }
+
+      await storage.incrementAdStats(id, 'click');
+      return res.json({ success: true });
+    } catch (error) {
+      log(`Track Ad Click Error: ${error}`, "error");
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to track click"
+      });
+    }
+  });
+
+  // Admin: Get all ads
+  app.get("/api/admin/ads",
+    adminAuthMiddleware,
+    async (req, res) => {
+      try {
+        const ads = await storage.getAllAds();
+        return res.json(ads);
+      } catch (error) {
+        log(`Get All Ads Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to fetch ads"
+        });
+      }
+    }
+  );
+
+  // Admin: Create ad
+  app.post("/api/admin/ads",
+    adminAuthMiddleware,
+    async (req, res) => {
+      try {
+        const { imageUrl, linkUrl } = req.body;
+
+        if (!imageUrl || !linkUrl) {
+          return res.status(400).json({ error: "Image URL and Link URL are required" });
+        }
+
+        const ad = await storage.createAd({
+          imageUrl,
+          linkUrl,
+          active: true
+        });
+
+        return res.status(201).json(ad);
+      } catch (error) {
+        log(`Create Ad Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to create ad"
+        });
+      }
+    }
+  );
+
+  // Admin: Update ad
+  app.put("/api/admin/ads/:id",
+    adminAuthMiddleware,
+    async (req, res) => {
+      try {
+        const id = typeof req.params.id === "string" ? req.params.id : req.params.id?.[0];
+        if (!id) return res.status(400).json({ error: "Invalid ad ID" });
+
+        const updates = req.body;
+
+        const ad = await storage.updateAd(id, updates);
+
+        if (!ad) {
+          return res.status(404).json({ error: "Ad not found" });
+        }
+
+        return res.json(ad);
+      } catch (error) {
+        log(`Update Ad Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to update ad"
+        });
+      }
+    }
+  );
+
+  // Admin: Delete ad
+  app.delete("/api/admin/ads/:id",
+    adminAuthMiddleware,
+    async (req, res) => {
+      try {
+        const id = typeof req.params.id === "string" ? req.params.id : req.params.id?.[0];
+        if (!id) return res.status(400).json({ error: "Invalid ad ID" });
+
+        const success = await storage.deleteAd(id);
+
+        if (!success) {
+          return res.status(404).json({ error: "Ad not found" });
+        }
+
+        return res.json({ success: true });
+      } catch (error) {
+        log(`Delete Ad Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to delete ad"
+        });
+      }
+    }
+  );
+
+  // ============================================
+  // CONTACT FORM
+  // ============================================
+
+  const contactSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters").max(100),
+    email: z.string().email("Invalid email address"),
+    subject: z.string().min(1, "Subject is required").max(200),
+    message: z.string().min(10, "Message must be at least 10 characters").max(5000),
+  });
+
+  app.post("/api/contact", emailRateLimiter, async (req, res) => {
+    try {
+      const parsed = contactSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const msg = parsed.error.errors[0]?.message ?? "Invalid input";
+        return res.status(400).json({ error: msg });
+      }
+      const { name, email, subject, message } = parsed.data;
+
+      const contactEmail = process.env.CONTACT_EMAIL || "support@pickusawinner.com";
+      const timestamp = format(new Date(), "PPpp");
+
+      const { sendEmail } = await import("./email");
+      const {
+        getContactReceivedHTML,
+        getContactReceivedText,
+        getContactAutoReplyHTML,
+        getContactAutoReplyText,
+      } = await import("./email-templates");
+
+      const contactData = { name, email, subject, message, timestamp };
+
+      const supportSent = await sendEmail({
+        to: contactEmail,
+        subject: `[PickUsAWinner Contact] ${subject}`,
+        text: getContactReceivedText(contactData),
+        html: getContactReceivedHTML(contactData),
+        replyTo: email,
+      });
+
+      const autoReplySent = await sendEmail({
+        to: email,
+        subject: "We received your message - PickUsAWinner",
+        text: getContactAutoReplyText({ name }),
+        html: getContactAutoReplyHTML({ name }),
+      });
+
+      if (!supportSent) {
+        log(`[CONTACT] Failed to send to support (${contactEmail})`, "error");
+        return res.status(500).json({ error: "Failed to send message. Please try again later." });
+      }
+
+      if (!autoReplySent) {
+        log(`[CONTACT] Support email sent but auto-reply failed for ${email}`, "warn");
+      }
+
+      return res.json({ success: true });
+    } catch (err) {
+      log(`[CONTACT] Error: ${err}`, "error");
+      return res.status(500).json({ error: "Something went wrong. Please try again later." });
+    }
+  });
+
+  // ============================================
   // SEO ENDPOINTS
   // ============================================
 
@@ -676,40 +817,39 @@ Disallow: /api/
 Disallow: /schedule/
 Disallow: /analytics
 
-Sitemap: https://giveaway-engine.com/sitemap.xml
+Sitemap: https://pickusawinner.com/sitemap.xml
 `);
   });
 
   app.get("/sitemap.xml", (_req, res) => {
-    const baseUrl = "https://giveaway-engine.com";
+    const baseUrl = "https://pickusawinner.com";
     const currentDate = new Date().toISOString().split("T")[0];
+
+    const urls = [
+      { loc: "/", changefreq: "weekly", priority: "1.0" },
+      { loc: "/tool", changefreq: "weekly", priority: "0.9" },
+      { loc: "/instagram-comment-scraper", changefreq: "weekly", priority: "0.85" },
+      { loc: "/wheel", changefreq: "weekly", priority: "0.85" },
+      { loc: "/picker", changefreq: "weekly", priority: "0.85" },
+      { loc: "/youtube", changefreq: "weekly", priority: "0.8" },
+      { loc: "/tiktok", changefreq: "weekly", priority: "0.8" },
+      { loc: "/facebook-picker", changefreq: "weekly", priority: "0.8" },
+      { loc: "/twitter-picker", changefreq: "weekly", priority: "0.8" },
+      { loc: "/coming-soon", changefreq: "monthly", priority: "0.4" },
+      { loc: "/press", changefreq: "monthly", priority: "0.5" },
+      { loc: "/contact", changefreq: "monthly", priority: "0.5" },
+      { loc: "/privacy", changefreq: "monthly", priority: "0.5" },
+      { loc: "/terms", changefreq: "monthly", priority: "0.5" },
+    ];
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}/</loc>
+${urls.map((u) => `  <url>
+    <loc>${baseUrl}${u.loc}</loc>
     <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/tool</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/privacy</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/terms</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join("\n")}
 </urlset>`;
 
     res.type("application/xml");

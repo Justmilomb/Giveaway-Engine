@@ -9,22 +9,30 @@ interface SEOProps {
   type?: string;
   noindex?: boolean;
   structuredData?: object;
+  /** Additional structured data (e.g. BreadcrumbList). Merged with structuredData if both provided. */
+  additionalStructuredData?: object[];
 }
 
 const defaultTitle = "PickUsAWinner - Free Giveaway Picker, Spin the Wheel & Random Name Picker";
 const defaultDescription = "The simplest random selection toolkit on the web. Instagram comment picker, spin the wheel, random name picker & giveaway generator. Trusted by creators. Cryptographically fair. 100% free.";
 const defaultImage = "https://giveaway-engine.com/opengraph.jpg";
 const baseUrl = "https://giveaway-engine.com";
+const defaultTitle = "PickUsAWinner - Instagram Giveaway Generator | No Signup, No Login";
+const defaultDescription = "Instagram giveaway generator & comment picker. Pick random winners from Instagram comments. No signup, no login, one-time payment. Free to start.";
+const defaultImage = "https://pickusawinner.com/opengraph.jpg";
+const baseUrl = "https://pickusawinner.com";
 
 export function SEO({
   title,
   description = defaultDescription,
   keywords = "pick us a winner, pick me a winner, instagram giveaway picker, giveaway generator, comment picker generator, spin the wheel, random wheel, random name picker, pick names at random, random option picker, giveaway maker, instagram comment picker, winner picker, fair giveaway, trusted by creators",
+  keywords = "instagram giveaway generator, instagram comments picker, no login giveaway tool, no signup, one-time payment, random winner selector, instagram contest",
   image = defaultImage,
   url,
   type = "website",
   noindex = false,
   structuredData,
+  additionalStructuredData,
 }: SEOProps) {
   const fullTitle = title ? `${title} | PickUsAWinner` : defaultTitle;
   const fullUrl = url ? `${baseUrl}${url}` : baseUrl;
@@ -63,6 +71,11 @@ export function SEO({
           {JSON.stringify(structuredData)}
         </script>
       )}
+      {additionalStructuredData?.map((data, i) => (
+        <script key={i} type="application/ld+json">
+          {JSON.stringify(data)}
+        </script>
+      ))}
     </Helmet>
   );
 }

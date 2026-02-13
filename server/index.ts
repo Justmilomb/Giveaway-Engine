@@ -53,16 +53,14 @@ app.use((req, res, next) => {
 });
 
 import { startScheduler } from "./scheduler";
+import { scraperRelay } from "./scraper-relay";
 
 (async () => {
   await registerRoutes(httpServer, app);
 
-  if (process.env.APIFY_TOKEN) {
-    const t = process.env.APIFY_TOKEN;
-    log(`Apify token detected: ${t.substring(0, 8)}...`);
-  } else {
-    log("CRITICAL: APIFY_TOKEN not found in environment.", "error");
-  }
+  // Initialize WebSocket relay for local scraper
+  scraperRelay.init(httpServer);
+  log("Scraper relay initialized. Local workers can connect via /ws/scraper");
 
   // Check for Instagram credentials
   if (process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD) {

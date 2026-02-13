@@ -7,9 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import GiveawayTool from "@/pages/tool";
-import LoginPage from "@/pages/auth/login";
-import RegisterPage from "@/pages/auth/register";
-import { AuthProvider } from "@/hooks/use-user";
 import { ProtectedRoute } from "@/lib/protected-route";
 import ComingSoon from "@/pages/coming-soon";
 import PrivacyPolicy from "@/pages/privacy";
@@ -22,6 +19,15 @@ import RandomOptionPicker from "@/pages/random-option-picker";
 import GiveawayGenerator from "@/pages/giveaway-generator";
 import HowItWorks from "@/pages/how-it-works";
 import InstagramGiveawayGuide from "@/pages/instagram-giveaway-guide";
+import WheelPage from "@/pages/wheel";
+import PickerPage from "@/pages/picker";
+import YouTubePage from "@/pages/youtube";
+import TikTokPage from "@/pages/tiktok";
+import InstagramScraperPage from "@/pages/instagram-scraper";
+import FacebookPage from "@/pages/facebook-picker";
+import TwitterPage from "@/pages/twitter-picker";
+import PressPage from "@/pages/press";
+import ContactPage from "@/pages/contact";
 
 function Router() {
   return (
@@ -34,11 +40,18 @@ function Router() {
       <Route path="/giveaway-generator" component={GiveawayGenerator} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route path="/instagram-giveaway-guide" component={InstagramGiveawayGuide} />
+      <Route path="/instagram-comment-scraper" component={InstagramScraperPage} />
+      <Route path="/facebook-picker" component={FacebookPage} />
+      <Route path="/twitter-picker" component={TwitterPage} />
+      <Route path="/wheel" component={WheelPage} />
+      <Route path="/picker" component={PickerPage} />
+      <Route path="/youtube" component={YouTubePage} />
+      <Route path="/tiktok" component={TikTokPage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/schedule/:token" component={SchedulePage} />
-      <Route path="/login" component={LoginPage} />
-      <Route path="/register" component={RegisterPage} />
       <Route path="/coming-soon" component={ComingSoon} />
+      <Route path="/press" component={PressPage} />
+      <Route path="/contact" component={ContactPage} />
       <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/terms" component={TermsOfService} />
       <Route component={NotFound} />
@@ -50,12 +63,10 @@ function App() {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
       </QueryClientProvider>
     </HelmetProvider>
   );

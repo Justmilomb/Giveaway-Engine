@@ -937,6 +937,52 @@ export class InstagramScraper {
     }
 
     /**
+     * Check if given user IDs follow the currently logged-in account.
+     * Spins up a browser, restores session, and checks via API.
+     */
+    async checkFollowers(userIds: string[]): Promise<Record<string, boolean>> {
+        log(`Starting follower check for ${userIds.length} users`, "scraper");
+        try {
+            this.browser = await this.launchBrowser();
+            const page = await this.browser.newPage();
+
+            await page.setUserAgent(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            );
+
+            // Restore session cookies
+            const restored = await this.sessionManager.restoreSession(page);
+            if (!restored) {
+                throw new Error("No saved Instagram session. Run a comment scrape first to establish a session.");
+            }
+
+            // Navigate to Instagram to activate cookies
+            await page.goto("https://www.instagram.com/", { waitUntil: "domcontentloaded", timeout: 15000 });
+            await new Promise((r) => setTimeout(r, 2000));
+
+            const apiClient = new InstagramApiClient();
+            const resultMap = await apiClient.checkFollowStatus(page, userIds);
+
+            await page.close();
+
+            const result: Record<string, boolean> = {};
+            for (const [userId, follows] of resultMap) {
+                result[userId] = follows;
+            }
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            log(`Follower check error: ${errorMessage}`, "scraper");
+            throw error;
+        } finally {
+            if (this.browser) {
+                await this.browser.close();
+                this.browser = null;
+            }
+        }
+    }
+
+    /**
      * Cleanup resources
      */
     async close(): Promise<void> {

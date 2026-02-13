@@ -116,6 +116,16 @@
     font-size: 16px; /* Prevent iOS zoom on input focus */
   }
 
+  /* Full-bleed utility for edge-to-edge sections */
+  .full-bleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+
   /* Marquee animation */
   .animate-marquee {
     animation: marquee 20s linear infinite;
