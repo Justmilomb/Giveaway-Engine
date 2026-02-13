@@ -46,12 +46,12 @@ export default function Home() {
         url="/"
         structuredData={faqStructuredData}
       />
-      <div className="space-y-16 sm:space-y-24 md:space-y-32 lg:space-y-48 pb-16 sm:pb-32">
+      <div className="space-y-10 sm:space-y-14 md:space-y-20 pb-10 sm:pb-16">
 
         {/* Hero Section */}
-        <section className="relative pt-8 sm:pt-12 md:pt-24 lg:pt-32 overflow-hidden">
+        <section className="relative pt-4 sm:pt-8 md:pt-12 overflow-hidden">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 md:gap-16 lg:gap-24 items-center">
+            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16 items-center">
               <div className="space-y-6 sm:space-y-8 md:space-y-10 z-10 text-center lg:text-left">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -121,7 +121,7 @@ export default function Home() {
         </section>
 
         {/* Marquee with better branding */}
-        <section className="bg-primary text-white py-6 sm:py-10 md:py-14 -mx-4 sm:-mx-6 md:-mx-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
+        <section className="full-bleed bg-primary text-white py-4 sm:py-6 md:py-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
           <div className="flex gap-8 sm:gap-16 text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] animate-marquee">
             <span>Verified Random • Pick Us A Winner • Anti-Cheat • Open Source • Verified Random • Anti-Cheat</span>
             <span>Verified Random • Pick Us A Winner • Anti-Cheat • Open Source • Verified Random • Anti-Cheat</span>
@@ -174,7 +174,7 @@ export default function Home() {
           <motion.div
             whileInView={{ scale: [0.95, 1], rotate: [-1, 0] }}
             viewport={{ once: true }}
-            className="bg-primary text-white p-6 sm:p-10 md:p-16 lg:p-20 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg text-center space-y-4 sm:space-y-6 md:space-y-8"
+            className="bg-primary text-white p-6 sm:p-8 md:p-10 lg:p-14 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg text-center space-y-4 sm:space-y-6 md:space-y-8"
           >
             <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-black uppercase leading-none">Ready to give <br className="hidden sm:block" /> back?</h2>
             <p className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold max-w-2xl mx-auto opacity-90 px-2"> Join thousands of creators using Pick Us A Winner to grow their community through fair giveaways. </p>

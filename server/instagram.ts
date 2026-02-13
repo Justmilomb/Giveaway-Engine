@@ -1,7 +1,5 @@
 import { log } from "./log";
-import { ApifyClient } from 'apify-client';
 import { InstagramScraper } from "./scraper/instagram-scraper";
-import { z } from "zod";
 import { scraperRelay } from "./scraper-relay";
 
 export interface InstagramComment {
@@ -24,30 +22,6 @@ export interface FetchCommentsResult {
         commentCount?: number;
     };
 }
-
-// API Configuration
-const getApifyClient = () => {
-    const token = process.env.APIFY_TOKEN?.trim();
-    if (!token) {
-        throw new Error("APIFY_TOKEN is not set");
-    }
-    return new ApifyClient({ token });
-};
-
-const InstagramCommentSchema = z.object({
-    id: z.string(),
-    ownerUsername: z.string().optional(),
-    user: z.object({ username: z.string().optional(), profile_pic_url: z.string().optional() }).optional(),
-    text: z.string().optional(),
-    timestamp: z.string().optional(),
-    likesCount: z.number().optional(),
-    ownerProfilePicUrl: z.string().optional(),
-    userProfilePicUrl: z.string().optional(),
-});
-
-const ApifyResponseSchema = z.object({
-    items: z.array(InstagramCommentSchema),
-});
 
 /**
  * Extract Instagram post ID from various URL formats
@@ -76,22 +50,20 @@ export function extractPostId(url: string): string | null {
 
 /**
  * Fetch comments from an Instagram post
- * Prioritizes custom scraper when credentials are available, otherwise falls back to Apify
+ * Prioritizes WebSocket relay, falls back to custom Puppeteer scraper
  */
 export async function fetchInstagramComments(
     postCode: string
 ): Promise<FetchCommentsResult> {
     const useCustomScraper = process.env.USE_CUSTOM_SCRAPER === "true";
-    const useApify = process.env.USE_APIFY === "true";
     const hasCredentials = !!(process.env.INSTAGRAM_USERNAME?.trim() && process.env.INSTAGRAM_PASSWORD?.trim());
-    const hasApifyToken = !!(process.env.APIFY_TOKEN?.trim());
     const workerConnected = scraperRelay.isWorkerConnected();
 
     const postUrl = postCode.startsWith("http") ? postCode : `https://www.instagram.com/p/${postCode}/`;
 
-    log(`Strategies available: Relay=${workerConnected}, Credentials=${hasCredentials}, Apify=${hasApifyToken}`, "instagram");
+    log(`Strategies available: Relay=${workerConnected}, Credentials=${hasCredentials}`, "instagram");
 
-    // Strategy 0: WebSocket Relay to local worker (HIGHEST PRIORITY)
+    // Strategy 1: WebSocket Relay to local worker (HIGHEST PRIORITY)
     if (workerConnected) {
         log(`Using relay to local worker for post: ${postCode}`, "instagram");
         try {
@@ -103,15 +75,6 @@ export async function fetchInstagramComments(
         }
     }
 
-    // Strategy 1: Explicit Apify
-    if (useApify) {
-        if (!hasApifyToken) {
-            throw new Error("USE_APIFY is true but APIFY_TOKEN is missing.");
-        }
-        log(`Using Apify for post: ${postCode} (explicit override)`, "instagram");
-        return await fetchWithApify(postCode, postUrl);
-    }
-
     // Strategy 2: Custom Scraper (local Puppeteer, only works if Chrome is available)
     if (useCustomScraper || hasCredentials) {
         log(`Using custom scraper for post: ${postCode} (Strategy: ${useCustomScraper ? 'Explicit' : 'Credentials'})`, "instagram");
@@ -120,137 +83,13 @@ export async function fetchInstagramComments(
             throw new Error("Custom scraper requires INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD to be set in environment variables.");
         }
 
-        try {
-            return await fetchWithCustomScraper(postUrl);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            log(`Custom scraper failed: ${errorMessage}`, "error");
-
-            if (hasApifyToken) {
-                log("Attempting fallback to Apify...", "instagram");
-                return await fetchWithApify(postCode, postUrl);
-            }
-
-            throw new Error(`Custom scraper failed: ${errorMessage}. (No Apify token available for fallback)`);
-        }
-    }
-
-    // Strategy 3: Apify (Fallback/Default if no credentials)
-    if (hasApifyToken) {
-        log(`Using Apify for post: ${postCode} (no credentials available)`, "instagram");
-        return await fetchWithApify(postCode, postUrl);
+        return await fetchWithCustomScraper(postUrl);
     }
 
     // No strategies available
     throw new Error(
-        "No scraper available. Please start the local worker on your computer (npm run scraper:worker) or configure Apify."
+        "No scraper available. Start the local worker (npm run scraper:worker) or set Instagram credentials."
     );
-}
-
-/**
- * Fetch comments using Apify
- */
-async function fetchWithApify(
-    postCode: string,
-    postUrl: string
-): Promise<FetchCommentsResult> {
-    // Configure Apify to fetch ALL comments
-    // Actor: apify/instagram-scraper (shu8hvrXbJbY3Eb9W)
-    // IMPORTANT: Free tier Apify has limited compute units
-    // If you're only getting ~15 comments, you may need to:
-    // 1. Upgrade your Apify plan for more compute units
-    // 2. Check if the post actually has more comments
-    const input = {
-        "directUrls": [postUrl],
-        "resultsType": "comments",
-        "resultsLimit": 0, // 0 = unlimited (get all available)
-        "searchType": "hashtag",
-        "searchLimit": 1,
-        "addParentData": true,
-        // Key parameters for getting more comments:
-        "maxItems": 0, // 0 = no limit, get all items
-        "maxRequestsPerCrawl": 1000, // Allow many pagination requests
-        "maxConcurrency": 5,
-        "proxyConfiguration": {
-            "useApifyProxy": true,
-        },
-    };
-
-    log(`Starting Apify run with config: resultsLimit=${input.resultsLimit}, maxItems=${input.maxItems}`, "instagram");
-
-    // Try the alternative Instagram Comment Scraper actor
-    // Actor ID: apify/instagram-comment-scraper OR the original one
-    // Note: The original actor (shu8hvrXbJbY3Eb9W) limits FREE users to 15 comments
-    // You need a PAID Apify subscription to get more comments
-    const actorId = process.env.APIFY_INSTAGRAM_ACTOR || "shu8hvrXbJbY3Eb9W";
-
-    const client = getApifyClient();
-    const run = await client.actor(actorId).call(input);
-
-    log(`Apify run completed. Run ID: ${run.id}, Status: ${run.status}, Actor: ${actorId}`, "instagram");
-
-    const { items: rawItems } = await client.dataset(run.defaultDatasetId).listItems();
-
-    log(`Raw items from Apify dataset: ${rawItems.length}`, "instagram");
-
-    // Validate with Zod
-    const items = rawItems.map((item: any) => {
-        const parsed = InstagramCommentSchema.safeParse(item);
-        if (!parsed.success) {
-            log(`Invalid item from Apify: ${JSON.stringify(parsed.error.format())}`, "instagram");
-            return null;
-        }
-        return parsed.data;
-    }).filter(i => i !== null) as z.infer<typeof InstagramCommentSchema>[];
-
-    // IMPORTANT: If you're seeing only 15 comments, you need to upgrade your Apify subscription
-    if (items.length <= 15) {
-        log(`⚠️ Only ${items.length} items returned. Free tier limit is 15 comments. Upgrade Apify for more.`, "instagram");
-    }
-
-    // Transform Apify items into InstagramComment format
-    // Debug: Log first few items to understand structure
-    if (items.length > 0) {
-        log(`Sample item keys: ${Object.keys(items[0]).join(', ')}`, "instagram");
-    }
-
-    const comments: InstagramComment[] = items
-        .map((item): InstagramComment | null => {
-            const username = item.ownerUsername || item.user?.username;
-            // Only skip if BOTH username and text are missing
-            if (!username && !item.text) return null;
-
-            return {
-                id: item.id || String(Math.random()),
-                username: username || "unknown",
-                text: item.text || "",
-                timestamp: item.timestamp || new Date().toISOString(),
-                likes: item.likesCount || 0,
-                avatar: item.ownerProfilePicUrl || item.userProfilePicUrl || item.user?.profile_pic_url,
-            };
-        })
-        .filter((c): c is InstagramComment => c !== null && c.username !== "unknown");
-
-    log(`Fetched ${comments.length} valid comments via Apify (from ${items.length} raw items)`, "instagram");
-
-    // If we got significantly fewer comments than expected, log a warning
-    if (items.length > 0 && comments.length < items.length * 0.5) {
-        log(`Warning: Many items filtered out. Check if Apify returned metadata instead of comments.`, "instagram");
-    }
-
-    // Try to get post info from the first item if available (parent data)
-    const firstItem = items[0] as any;
-
-    return {
-        comments,
-        total: comments.length,
-        postInfo: firstItem ? {
-            id: postCode,
-            caption: firstItem.caption,
-            likeCount: firstItem.likesCount,
-            commentCount: firstItem.commentsCount
-        } : undefined,
-    };
 }
 
 /**
@@ -276,7 +115,7 @@ async function fetchWithCustomScraper(postUrl: string): Promise<FetchCommentsRes
         if (errorStack) {
             log(`Custom scraper stack: ${errorStack}`, "error");
         }
-        throw error; // Re-throw so the fallback logic can catch it
+        throw error;
     } finally {
         if (scraper) {
             try {
@@ -287,5 +126,3 @@ async function fetchWithCustomScraper(postUrl: string): Promise<FetchCommentsRes
         }
     }
 }
-
-

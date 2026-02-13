@@ -9,7 +9,7 @@ Full-stack Instagram giveaway runner (PickUsAWinner Engine). Scrapes comments fr
 - **Frontend:** React 19, Vite 7, TailwindCSS 4, shadcn/ui (Radix), Wouter (routing), React Query, React Hook Form + Zod
 - **Backend:** Express 5, Passport.js (local strategy), express-session, express-rate-limit
 - **Database:** PostgreSQL 16, Drizzle ORM, drizzle-kit (migrations)
-- **Scraping:** Puppeteer + puppeteer-extra-plugin-stealth, Apify Client (fallback)
+- **Scraping:** Puppeteer + puppeteer-extra-plugin-stealth
 - **Payments:** Stripe (PaymentIntent API + Stripe Elements)
 - **Email:** Nodemailer (SMTP)
 - **Build:** Vite (client), esbuild (server), tsx (dev runner)
@@ -30,7 +30,7 @@ server/               # Express backend
   routes.ts           # All API endpoints (~400 lines)
   auth.ts             # Passport.js local strategy, registration, session config
   security.ts         # Rate limiters, credit system, IP blocking, admin auth
-  instagram.ts        # Instagram API integration (Apify + custom scraper dispatch)
+  instagram.ts        # Instagram scraper dispatch (relay + custom Puppeteer)
   scheduler.ts        # Background job processor (polls every 60s for pending giveaways)
   storage.ts          # In-memory storage with JSON file persistence fallback
   email.ts            # Nodemailer SMTP config and sending
@@ -52,7 +52,6 @@ shared/               # Shared between client and server
 script/               # Build and utility scripts
   build.ts            # Production build (Vite + esbuild)
   manual-login.ts     # Instagram login automation
-  test-apify.ts       # Apify integration testing
   debug-api.ts        # API endpoint debugging
 
 migrations/           # Drizzle-kit database migrations
@@ -142,7 +141,7 @@ Defined in `client/src/App.tsx` using Wouter:
 - **Credit system:** IP-based, 2 free credits per IP, paid credits via token redemption. HTTP 402 when credits exhausted.
 - **Storage:** `MemStorage` class (Map-based) with JSON persistence to `db.json`. PostgreSQL via Drizzle when `DATABASE_URL` is set.
 - **Background jobs:** `scheduler.ts` polls every 60 seconds for pending giveaways, processes them (fetch comments, filter, pick winners, send emails)
-- **Instagram scraping:** Primary via Apify API, fallback to custom Puppeteer scraper with network interception and DOM fallback. Mock mode available for demos.
+- **Instagram scraping:** Custom Puppeteer scraper via WebSocket relay or local, with network interception and DOM fallback.
 
 ## Environment Variables
 
@@ -151,7 +150,6 @@ Required variables (see `.env.example`):
 | Variable | Required | Description |
 |---|---|---|
 | `DATABASE_URL` | For DB | PostgreSQL connection string |
-| `APIFY_TOKEN` | Yes | Apify API key for Instagram scraping |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | For email | SMTP config for sending emails |
 | `ADMIN_API_KEY` | For admin | Secret for admin endpoints |
 | `SESSION_SECRET` | Production | Session encryption key |

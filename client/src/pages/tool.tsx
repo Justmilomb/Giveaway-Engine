@@ -1052,7 +1052,7 @@ export default function GiveawayTool() {
                 </div>
 
                 <div className="flex justify-center py-6">
-                  <AdBanner format="horizontal" />
+                  <AdBanner type="adsense" />
                 </div>
 
 

@@ -117,12 +117,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-16 md:py-24">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-8 md:py-12">
         {children}
       </main>
 
       <footer className="border-t-4 border-black bg-white mt-auto overflow-hidden">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-20 md:py-32">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-12 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-16">
             <div className="md:col-span-7 space-y-8">
               <div className="flex items-center gap-3">
@@ -146,7 +146,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="mt-20 pt-10 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="mt-12 pt-6 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="font-black uppercase tracking-widest text-sm text-center md:text-left">© 2026 PickUsAWinner. All rights reserved.</p>
             <div className="flex gap-8 font-black uppercase tracking-widest text-[10px] md:text-xs">
               <Link href="/privacy" className="hover:underline underline-offset-4">Privacy Policy</Link>
