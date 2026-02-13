@@ -13,6 +13,12 @@ import PrivacyPolicy from "@/pages/privacy";
 import TermsOfService from "@/pages/terms";
 import AnalyticsPage from "@/pages/analytics";
 import SchedulePage from "@/pages/schedule";
+import SpinTheWheel from "@/pages/spin-the-wheel";
+import RandomNamePicker from "@/pages/random-name-picker";
+import RandomOptionPicker from "@/pages/random-option-picker";
+import GiveawayGenerator from "@/pages/giveaway-generator";
+import HowItWorks from "@/pages/how-it-works";
+import InstagramGiveawayGuide from "@/pages/instagram-giveaway-guide";
 import WheelPage from "@/pages/wheel";
 import PickerPage from "@/pages/picker";
 import YouTubePage from "@/pages/youtube";
@@ -28,6 +34,12 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/tool" component={GiveawayTool} />
+      <Route path="/spin-the-wheel" component={SpinTheWheel} />
+      <Route path="/random-name-picker" component={RandomNamePicker} />
+      <Route path="/random-option-picker" component={RandomOptionPicker} />
+      <Route path="/giveaway-generator" component={GiveawayGenerator} />
+      <Route path="/how-it-works" component={HowItWorks} />
+      <Route path="/instagram-giveaway-guide" component={InstagramGiveawayGuide} />
       <Route path="/instagram-comment-scraper" component={InstagramScraperPage} />
       <Route path="/facebook-picker" component={FacebookPage} />
       <Route path="/twitter-picker" component={TwitterPage} />
