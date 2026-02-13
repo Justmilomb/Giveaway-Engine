@@ -1,7 +1,7 @@
 import Layout from "@/components/layout";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle, Zap, ShieldCheck, Sparkles, Instagram, Youtube, Facebook, Twitter } from "lucide-react";
 import heroImage from "@/assets/hero-giveaway.png";
 import { SEO } from "@/components/seo";
 import { AdBanner } from "@/components/AdBanner";
@@ -51,8 +51,8 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative pt-4 sm:pt-8 md:pt-12 overflow-hidden">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16 items-center">
-              <div className="space-y-6 sm:space-y-8 md:space-y-10 z-10 text-center lg:text-left">
+            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16 items-start lg:min-h-0">
+              <div className="space-y-6 sm:space-y-8 md:space-y-10 z-20 relative text-center lg:text-left order-2 lg:order-1">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -101,20 +101,22 @@ export default function Home() {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="relative mt-8 lg:mt-0"
+                className="relative mt-8 lg:mt-0 order-1 lg:order-2 flex justify-center lg:justify-end"
               >
-                <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 md:-top-10 md:-right-10 w-full h-full bg-secondary border-2 sm:border-4 border-black z-0 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg"></div>
-                <img
-                  src={heroImage}
-                  alt="Pick Us A Winner - The Ultimate Instagram Comment Picker"
-                  loading="eager"
-                  fetchPriority="high"
-                  decoding="async"
-                  width="600"
-                  height="400"
-                  className="relative z-10 w-full border-2 sm:border-4 border-black bg-white p-2 sm:p-4 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg"
-                  style={{ aspectRatio: '3/2' }}
-                />
+                <div className="relative w-full max-w-md lg:max-w-lg">
+                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3 w-full h-full bg-secondary border-2 sm:border-4 border-black z-0 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg"></div>
+                  <img
+                    src={heroImage}
+                    alt="Pick Us A Winner - The Ultimate Instagram Comment Picker"
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    width="600"
+                    height="400"
+                    className="relative z-10 w-full border-2 sm:border-4 border-black bg-white p-2 sm:p-4 shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg object-contain"
+                    style={{ aspectRatio: '3/2' }}
+                  />
+                </div>
               </motion.div>
             </div>
           </div>
@@ -166,6 +168,63 @@ export default function Home() {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </section>
+
+        {/* Tools Hierarchy: 1. Instagram (main) 2. Working mini tools 3. Coming soon → Instagram */}
+        <section className="container mx-auto px-4 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-black uppercase mb-8 text-center">All Our Tools</h2>
+          <div className="space-y-10 max-w-4xl mx-auto">
+            {/* Tier 1: Main - Instagram */}
+            <div className="border-4 border-black bg-primary/10 p-6 sm:p-8">
+              <p className="text-xs font-black uppercase tracking-widest text-primary mb-2">Main Tool</p>
+              <Link href="/tool" className="flex items-center gap-4 group">
+                <div className="bg-instagram p-3 border-2 border-black text-white">
+                  <Instagram className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl sm:text-2xl font-black uppercase group-hover:text-primary transition-colors">Instagram Giveaway Picker</h3>
+                  <p className="text-sm font-medium text-muted-foreground">Pick random winners from comments. Filter, schedule, done.</p>
+                </div>
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              </Link>
+            </div>
+
+            {/* Tier 2: Working mini tools */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Working Tools</p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { href: "/instagram-comment-scraper", label: "Comment Scraper", desc: "Export Instagram comments" },
+                  { href: "/wheel", label: "Wheel of Names", desc: "Spin to pick a winner" },
+                  { href: "/picker", label: "Random Picker", desc: "Pick from any list" },
+                ].map((t) => (
+                  <Link key={t.href} href={t.href} className="block p-4 border-2 border-black bg-white hover:bg-secondary transition-colors group">
+                    <h4 className="font-black uppercase group-hover:text-primary">{t.label}</h4>
+                    <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Tier 3: Coming soon → Instagram */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Coming Soon</p>
+              <p className="text-sm font-medium text-muted-foreground mb-4">These will launch later. Use Instagram Picker for now.</p>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { href: "/youtube", label: "YouTube", icon: <Youtube className="w-4 h-4" /> },
+                  { href: "/tiktok", label: "TikTok", icon: null },
+                  { href: "/facebook-picker", label: "Facebook", icon: <Facebook className="w-4 h-4" /> },
+                  { href: "/twitter-picker", label: "Twitter", icon: <Twitter className="w-4 h-4" /> },
+                ].map((t) => (
+                  <Link key={t.href} href={t.href} className="inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 text-slate-600 hover:border-black hover:text-black transition-colors text-sm font-bold">
+                    {t.icon}
+                    {t.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
