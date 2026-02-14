@@ -112,7 +112,7 @@ export default function PressPage() {
           <h2 className="text-2xl font-black uppercase">Contact</h2>
           <p className="text-lg font-medium">
             For press inquiries or partnership opportunities, visit our{" "}
-            <Link href="/" className="text-primary font-bold underline hover:no-underline">
+            <Link href="/giveaway-generator" className="text-primary font-bold underline hover:no-underline">
               homepage
             </Link>{" "}
             or use the contact options in the footer.

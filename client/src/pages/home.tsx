@@ -72,7 +72,7 @@ export default function Home() {
         url="/"
         structuredData={faqStructuredData}
       />
-      <div className="space-y-10 sm:space-y-14 md:space-y-20 pb-10 sm:pb-16">
+      <div className="space-y-8 sm:space-y-10 md:space-y-12 pb-8 sm:pb-12">
 
         {/* Hero Section */}
         <section className="relative pt-4 sm:pt-8 md:pt-12 overflow-hidden">
@@ -92,7 +92,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black leading-[0.85] tracking-tighter italic"
+                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[0.9] tracking-tighter italic"
                 >
                   PICK US <br className="hidden sm:block" />
                   <span className="text-primary sm:drop-shadow-[6px_6px_0px_rgba(0,0,0,1)] not-italic">A WINNER.</span>
@@ -104,7 +104,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-800 max-w-xl mx-auto lg:mx-0 leading-tight px-2 sm:px-0"
+                  className="text-base sm:text-lg md:text-xl font-bold text-slate-800 max-w-xl mx-auto lg:mx-0 leading-tight px-2 sm:px-0"
                 >
                   The simplest random selection toolkit on the web. Instagram giveaways, spin the wheel, name picker & more — all cryptographically fair. Free to configure. One-time payment for credits. No subscription.
                 </motion.p>
@@ -115,10 +115,10 @@ export default function Home() {
                   transition={{ delay: 0.3 }}
                   className="flex flex-col sm:flex-row gap-3 sm:gap-6 justify-center lg:justify-start px-4 sm:px-0"
                 >
-                  <Link href="/tool" className="neo-btn-primary text-lg sm:text-xl md:text-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-10 flex items-center justify-center gap-2 sm:gap-3 group">
-                    Instagram Picker <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 group-hover:translate-x-2 transition-transform" />
+                  <Link href="/tool" className="neo-btn-primary text-base sm:text-lg md:text-xl py-3 sm:py-4 md:py-5 px-5 sm:px-6 md:px-8 flex items-center justify-center gap-2 sm:gap-3 group">
+                    Instagram Picker <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-2 transition-transform" />
                   </Link>
-                  <Link href="/random-name-picker" className="neo-btn-secondary text-lg sm:text-xl md:text-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-10 flex items-center justify-center">
+                  <Link href="/random-name-picker" className="neo-btn-secondary text-base sm:text-lg md:text-xl py-3 sm:py-4 md:py-5 px-5 sm:px-6 md:px-8 flex items-center justify-center">
                     Name Picker
                   </Link>
                 </motion.div>
@@ -161,18 +161,18 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Marquee */}
-        <section className="bg-primary text-white py-6 sm:py-10 md:py-14 -mx-4 sm:-mx-6 md:-mx-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
-          <div className="flex gap-8 sm:gap-16 text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] animate-marquee">
-            <span>Pick Us A Winner • Spin the Wheel • Random Name Picker • Giveaway Generator • Pick Me A Winner • Comment Picker</span>
-            <span>Pick Us A Winner • Spin the Wheel • Random Name Picker • Giveaway Generator • Pick Me A Winner • Comment Picker</span>
+        {/* Single Marquee - infinite scroll, compact */}
+        <section className="bg-primary text-white py-3 sm:py-4 -mx-4 sm:-mx-6 md:-mx-8 border-y-2 sm:border-y-4 border-black overflow-hidden whitespace-nowrap rotate-1">
+          <div className="flex gap-0 min-w-max animate-marquee [&>span]:pr-8 sm:[&>span]:pr-16">
+            <span className="flex-shrink-0 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider">Pick Us A Winner • Spin the Wheel • Random Name Picker • No Signup • No Login • One-Time Pay • Instagram Giveaway Generator</span>
+            <span className="flex-shrink-0 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider">Pick Us A Winner • Spin the Wheel • Random Name Picker • No Signup • No Login • One-Time Pay • Instagram Giveaway Generator</span>
           </div>
         </section>
 
         {/* Tools Showcase — This is critical for SEO and cross-linking */}
         <section className="py-8 sm:py-12 px-2 sm:px-4 md:px-0">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black bg-white inline-block px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 border-4 sm:border-[6px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black bg-white inline-block px-3 sm:px-5 py-2 border-2 sm:border-4 border-black shadow-neo uppercase">
               Our Free Tools
             </h2>
           </div>
@@ -238,22 +238,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Marquee with better branding */}
-        <section className="full-bleed bg-primary text-white py-4 sm:py-6 md:py-8 border-y-4 sm:border-y-[6px] border-black overflow-hidden whitespace-nowrap rotate-1">
-          <div className="flex gap-8 sm:gap-16 text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] animate-marquee">
-            <span>No Signup • No Login • One-Time Pay • Instagram Giveaway Generator • Instagram Comments Picker</span>
-            <span>No Signup • No Login • One-Time Pay • Instagram Giveaway Generator • Instagram Comments Picker</span>
-          </div>
-        </section>
-
         {/* AdSense Banner */}
         <section className="container mx-auto px-4">
           <AdBanner type="adsense" className="w-full" />
         </section>
 
         {/* Steps - compact, link to full page */}
-        <section className="py-6 sm:py-8 px-2 sm:px-4 md:px-0">
-          <Link href="/how-it-works" className="block border-4 border-black bg-white p-6 sm:p-8 shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-neo-sm transition-all">
+        <section className="py-4 sm:py-6 px-2 sm:px-4 md:px-0">
+          <Link href="/how-it-works" className="block border-4 border-black bg-white p-4 sm:p-6 shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-neo-sm transition-all">
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
               <div className="flex gap-2 sm:gap-4">
                 {[<Zap key="1" className="w-10 h-10 text-[#FFDA44]" />, <ShieldCheck key="2" className="w-10 h-10 text-[#A733F4]" />, <CheckCircle key="3" className="w-10 h-10 text-[#FF338D]" />].map((icon, i) => (
@@ -261,7 +253,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="text-center sm:text-left flex-1">
-                <h3 className="text-xl sm:text-2xl font-black uppercase">3 Simple Steps: Paste Link → Set Rules → Pick Winner</h3>
+                <h3 className="text-base sm:text-lg font-black uppercase">3 Simple Steps: Paste Link → Set Rules → Pick Winner</h3>
                 <p className="text-sm font-medium text-muted-foreground mt-1">Learn how our algorithm ensures fair selection</p>
               </div>
               <ArrowRight className="w-6 h-6 flex-shrink-0" />
@@ -270,9 +262,9 @@ export default function Home() {
         </section>
 
         {/* Why PickUsAWinner */}
-        <section className="py-8 sm:py-12 px-2 sm:px-4 md:px-0">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase">Why Creators Trust Pick Us A Winner</h2>
+        <section className="py-6 sm:py-8 px-2 sm:px-4 md:px-0">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase">Why Creators Trust Pick Us A Winner</h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
@@ -305,7 +297,7 @@ export default function Home() {
         </section>
 
         {/* Platform Support - compact */}
-        <section className="py-6 sm:py-8 px-2 sm:px-4 md:px-0">
+        <section className="py-4 sm:py-6 px-2 sm:px-4 md:px-0">
           <Link href="/coming-soon" className="block border-4 border-black bg-slate-50 p-4 sm:p-6 text-center hover:bg-slate-100 transition-colors">
             <p className="font-bold text-slate-700">Instagram live now. YouTube, TikTok, Facebook coming soon.</p>
             <p className="text-sm text-primary font-black uppercase mt-1">View platform status →</p>
@@ -331,21 +323,21 @@ export default function Home() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-8 sm:py-12 px-2 sm:px-0">
+        <section className="py-6 sm:py-8 px-2 sm:px-0">
           <motion.div
             whileInView={{ scale: [0.95, 1], rotate: [-1, 0] }}
             viewport={{ once: true }}
-            className="bg-primary text-white p-6 sm:p-8 md:p-10 lg:p-14 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg text-center space-y-4 sm:space-y-6 md:space-y-8"
+            className="bg-primary text-white p-5 sm:p-6 md:p-8 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_#000] sm:shadow-neo-lg text-center space-y-3 sm:space-y-4 md:space-y-6"
           >
-            <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-black uppercase leading-none">Ready to Pick <br className="hidden sm:block" /> a Winner?</h2>
-            <p className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold max-w-2xl mx-auto opacity-90 px-2">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black uppercase leading-none">Ready to Pick <br className="hidden sm:block" /> a Winner?</h2>
+            <p className="text-sm sm:text-base md:text-lg font-bold max-w-2xl mx-auto opacity-90 px-2">
               Join thousands of creators using PickUsAWinner to run fair giveaways and grow their community.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 sm:pt-4">
-              <Link href="/tool" className="bg-white text-black border-2 sm:border-4 border-black p-4 sm:p-6 md:px-10 md:py-6 text-lg sm:text-xl md:text-2xl font-black uppercase shadow-[3px_3px_0px_0px_#000] sm:shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000] sm:hover:shadow-neo-sm transition-all inline-block italic tracking-tighter">
+              <Link href="/tool" className="bg-white text-black border-2 sm:border-4 border-black p-3 sm:p-4 md:px-8 md:py-4 text-base sm:text-lg md:text-xl font-black uppercase shadow-[3px_3px_0px_0px_#000] sm:shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000] sm:hover:shadow-neo-sm transition-all inline-block italic tracking-tighter">
                 Instagram Picker
               </Link>
-              <Link href="/spin-the-wheel" className="bg-secondary text-black border-2 sm:border-4 border-black p-4 sm:p-6 md:px-10 md:py-6 text-lg sm:text-xl md:text-2xl font-black uppercase shadow-[3px_3px_0px_0px_#000] sm:shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000] sm:hover:shadow-neo-sm transition-all inline-block italic tracking-tighter">
+              <Link href="/spin-the-wheel" className="bg-secondary text-black border-2 sm:border-4 border-black p-3 sm:p-4 md:px-8 md:py-4 text-base sm:text-lg md:text-xl font-black uppercase shadow-[3px_3px_0px_0px_#000] sm:shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000] sm:hover:shadow-neo-sm transition-all inline-block italic tracking-tighter">
                 Spin the Wheel
               </Link>
             </div>

@@ -47,6 +47,11 @@ function getTransporter(): nodemailer.Transporter | null {
     }
 }
 
+/** Check if SMTP is configured (without creating transporter) */
+export function isEmailConfigured(): boolean {
+  return !!(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
 export async function sendEmail({ to, subject, text, html, replyTo }: EmailOptions): Promise<boolean> {
     const emailTransporter = getTransporter();
 
@@ -72,7 +77,11 @@ export async function sendEmail({ to, subject, text, html, replyTo }: EmailOptio
         console.log(`[EMAIL] Email sent successfully to ${to}. Message ID: ${info.messageId}`);
         return true;
     } catch (error) {
-        console.error(`[EMAIL] Failed to send email to ${to}:`, error);
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error(`[EMAIL] Failed to send email to ${to}:`, err.message);
+        if (err.message?.includes("Invalid login") || err.message?.includes("authentication")) {
+            console.error("[EMAIL] Hint: For iCloud, use an App-Specific Password from appleid.apple.com");
+        }
         return false;
     }
 }

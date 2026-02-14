@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
@@ -32,12 +32,15 @@ import FAQPage from "@/pages/faq";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/">
+        <Redirect to="/giveaway-generator" />
+      </Route>
+      <Route path="/home" component={Home} />
+      <Route path="/giveaway-generator" component={GiveawayGenerator} />
       <Route path="/tool" component={GiveawayTool} />
       <Route path="/spin-the-wheel" component={SpinTheWheel} />
       <Route path="/random-name-picker" component={RandomNamePicker} />
       <Route path="/random-option-picker" component={RandomOptionPicker} />
-      <Route path="/giveaway-generator" component={GiveawayGenerator} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route path="/instagram-giveaway-guide" component={InstagramGiveawayGuide} />
       <Route path="/facebook-picker" component={FacebookPage} />

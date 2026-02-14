@@ -754,6 +754,12 @@ export async function registerRoutes(
 
   app.post("/api/contact", emailRateLimiter, async (req, res) => {
     try {
+      const { isEmailConfigured, sendEmail } = await import("./email");
+      if (!isEmailConfigured()) {
+        log("[CONTACT] SMTP not configured - cannot send contact emails", "error");
+        return res.status(503).json({ error: "Email service is not configured. Please contact support@pickusawinner.com directly." });
+      }
+
       const parsed = contactSchema.safeParse(req.body);
       if (!parsed.success) {
         const msg = parsed.error.errors[0]?.message ?? "Invalid input";
@@ -764,7 +770,6 @@ export async function registerRoutes(
       const contactEmail = process.env.CONTACT_EMAIL || "support@pickusawinner.com";
       const timestamp = format(new Date(), "PPpp");
 
-      const { sendEmail } = await import("./email");
       const {
         getContactReceivedHTML,
         getContactReceivedText,
@@ -790,8 +795,8 @@ export async function registerRoutes(
       });
 
       if (!supportSent) {
-        log(`[CONTACT] Failed to send to support (${contactEmail})`, "error");
-        return res.status(500).json({ error: "Failed to send message. Please try again later." });
+        log(`[CONTACT] Failed to send to support (${contactEmail}) - check SMTP config and server logs`, "error");
+        return res.status(500).json({ error: "Failed to send message. Please check your SMTP settings or email support@pickusawinner.com directly." });
       }
 
       if (!autoReplySent) {
@@ -800,7 +805,9 @@ export async function registerRoutes(
 
       return res.json({ success: true });
     } catch (err) {
-      log(`[CONTACT] Error: ${err}`, "error");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      log(`[CONTACT] Error: ${errMsg}`, "error");
+      if (err instanceof Error && err.stack) log(err.stack, "debug");
       return res.status(500).json({ error: "Something went wrong. Please try again later." });
     }
   });
@@ -808,6 +815,11 @@ export async function registerRoutes(
   // ============================================
   // SEO ENDPOINTS
   // ============================================
+
+  // Redirect root to main page (giveaway generator)
+  app.get("/", (_req, res) => {
+    res.redirect(301, "/giveaway-generator");
+  });
 
   // Redirect deprecated Comment Getter to Instagram Picker
   app.get("/instagram-comment-scraper", (_req, res) => {
@@ -831,7 +843,7 @@ Sitemap: https://pickusawinner.com/sitemap.xml
     const currentDate = new Date().toISOString().split("T")[0];
 
     const urls = [
-      { loc: "/", changefreq: "weekly", priority: "1.0" },
+      { loc: "/giveaway-generator", changefreq: "weekly", priority: "1.0" },
       { loc: "/tool", changefreq: "weekly", priority: "0.9" },
       { loc: "/wheel", changefreq: "weekly", priority: "0.85" },
       { loc: "/picker", changefreq: "weekly", priority: "0.85" },
