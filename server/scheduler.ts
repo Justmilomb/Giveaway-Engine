@@ -106,7 +106,7 @@ async function processGiveaway(giveaway: any) {
         const targetEmail = user?.email || giveaway.config?.contactEmail;
 
         if (targetEmail) {
-            await sendEmail({
+            const resultsSent = await sendEmail({
                 to: targetEmail,
                 subject: "🏆 Your Giveaway Results Are Ready!",
                 text: getResultsEmailText({
@@ -126,6 +126,9 @@ async function processGiveaway(giveaway: any) {
                     postUrl: config.url,
                 }),
             });
+            if (!resultsSent) {
+                console.error(`[Scheduler] Failed to send results email for giveaway ${giveaway.id} to ${targetEmail}`);
+            }
         }
 
         console.log(`[Scheduler] Giveaway ${giveaway.id} completed. Winners: ${winners.length}`);
