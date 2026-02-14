@@ -1,12 +1,7 @@
 import Layout from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Link } from "wouter";
-import { Link2, Download } from "lucide-react";
-
-const LOGO_URL = "/favicon.png?v=4";
-const LOGO_FILENAME = "pickusawinner-favicon.png";
-const OPENGRAPH_URL = "/social-image.jpg?v=4";
-const OPENGRAPH_FILENAME = "pickusawinner-social-image.jpg";
+import { Link2 } from "lucide-react";
 
 export default function PressPage() {
   const breadcrumbData = {
@@ -53,38 +48,6 @@ export default function PressPage() {
           </p>
           <div className="bg-slate-100 border-2 border-black p-4 font-mono text-sm">
             &lt;a href="https://pickusawinner.com"&gt;PickUsAWinner - Free Instagram Giveaway Picker&lt;/a&gt;
-          </div>
-        </section>
-
-        <section className="space-y-8 mb-16">
-          <h2 className="text-2xl font-black uppercase flex items-center gap-2">
-            <Download className="w-6 h-6" /> Brand Assets
-          </h2>
-          <p className="text-lg font-medium leading-relaxed">
-            Use our logo and branding when writing about PickUsAWinner. Please do not alter the logo or imply endorsement.
-          </p>
-          <div className="p-6 border-2 border-black bg-white space-y-6">
-            <img
-              src="/favicon.png?v=4"
-              alt="PickUsAWinner favicon"
-              className="w-28 h-28 object-contain"
-            />
-            <a
-              href={LOGO_URL}
-              download={LOGO_FILENAME}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white font-bold border-2 border-black hover:bg-primary hover:border-primary transition-colors cursor-pointer"
-            >
-              <Download className="w-5 h-5" />
-              Download Logo (PNG)
-            </a>
-            <a
-              href={OPENGRAPH_URL}
-              download={OPENGRAPH_FILENAME}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-bold border-2 border-black hover:bg-primary hover:text-white hover:border-primary transition-colors cursor-pointer"
-            >
-              <Download className="w-5 h-5" />
-              Download Social Image (JPG)
-            </a>
           </div>
         </section>
 
