@@ -75,7 +75,7 @@ export function CheckoutForm({ onSuccess, onCancel }: CheckoutFormProps) {
             Processing...
           </>
         ) : (
-          "Pay £5.00"
+          "Pay £2.50"
         )}
       </Button>
 
@@ -91,3 +91,4 @@ export function CheckoutForm({ onSuccess, onCancel }: CheckoutFormProps) {
     </form>
   );
 }
+

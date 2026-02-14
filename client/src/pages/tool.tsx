@@ -541,7 +541,7 @@ export default function GiveawayTool() {
     <Layout>
       <SEO
         title="Instagram Giveaway Generator | No Signup, No Login"
-        description="Instagram giveaways tool & comment picker. Pick random winners from Instagram comments. Free to configure. One-time payment (£5) for credits. No signup, no subscription. Filter, schedule, done."
+        description="Instagram giveaways tool & comment picker. Pick random winners from Instagram comments. Free to configure. One-time payment (£2.50) for credits. No signup, no subscription. Filter, schedule, done."
         url="/tool"
         keywords="instagram giveaways tool, instagram giveaway tool, instagram giveaway generator, instagram comments picker, instagram comment picker tool, no login, no signup, one-time payment, random winner selector, instagram contest"
         additionalStructuredData={[
@@ -550,8 +550,8 @@ export default function GiveawayTool() {
             "@type": "WebApplication",
             name: "PickUsAWinner Instagram Giveaway Generator",
             applicationCategory: "UtilitiesApplication",
-            offers: { "@type": "Offer", price: "5", priceCurrency: "GBP" },
-            description: "Instagram giveaways tool. Pick random winners from Instagram comments. Free to configure. One-time payment (£5) for credits. No signup, no subscription.",
+            offers: { "@type": "Offer", price: "2.50", priceCurrency: "GBP" },
+            description: "Instagram giveaways tool. Pick random winners from Instagram comments. Free to configure. One-time payment (£2.50) for credits. No signup, no subscription.",
             url: "https://pickusawinner.com/tool",
           },
           {
@@ -571,7 +571,7 @@ export default function GiveawayTool() {
                 name: "Is the Instagram giveaway generator free?",
                 acceptedAnswer: {
                   "@type": "Answer",
-                  text: "Free to configure. One-time payment (£5) required to fetch Instagram comments and pick winners. 2 free credits to start. No subscription, no login required.",
+                  text: "Free to configure. One-time payment (£2.50) required to fetch Instagram comments and pick winners. 2 free credits to start. No subscription, no login required.",
                 },
               },
               {
@@ -593,7 +593,7 @@ export default function GiveawayTool() {
             <Instagram className="w-5 h-5" /> Instagram Giveaway Generator
           </div>
           <div className="bg-amber-100 border-2 border-amber-600 text-amber-900 px-4 py-2 mb-4 font-bold text-sm sm:text-base max-w-xl mx-auto">
-            Free to configure. One-time payment (£5) to fetch comments and pick winners.
+            Free to configure. One-time payment (£2.50) to fetch comments and pick winners.
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase mb-4">Pick Winners</h1>
           <p className="text-base sm:text-lg font-medium text-muted-foreground px-4 sm:px-0">Instagram giveaway generator & comments picker. Fairly select winners from Instagram comments. No signup, no login.</p>
@@ -845,7 +845,7 @@ export default function GiveawayTool() {
                     className="w-full neo-btn-primary text-xl py-6 disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 border-green-700 mb-4"
                   >
                     <PartyPopper className="mr-2 w-6 h-6" />
-                    {scheduleDate ? "Pay £5.00 & Schedule" : "Pay £5.00 & Pick Winners"}
+                    {scheduleDate ? "Pay £2.50 & Schedule" : "Pay £2.50 & Pick Winners"}
                   </Button>
 
                   <Button
@@ -949,7 +949,7 @@ export default function GiveawayTool() {
                                   Loading...
                                 </>
                               ) : (
-                                "Pay £5.00 & Schedule"
+                                "Pay £2.50 & Schedule"
                               )}
                             </Button>
                             <Button
@@ -975,14 +975,14 @@ export default function GiveawayTool() {
                       </div>
                       <h2 className="text-2xl sm:text-3xl font-black uppercase mb-2">Pay to Continue</h2>
                       <p className="text-sm sm:text-base text-muted-foreground">
-                        {fetchedEntries.length > 0 ? "One-time payment to pick winners" : "One-time payment to access Instagram comments"}
+                        {fetchedEntries.length > 0 ? "One-time payment (£2.50) to pick winners" : "One-time payment (£2.50) to access Instagram comments"}
                       </p>
                     </div>
 
                     <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
                       <div className="flex justify-between items-center p-3 sm:p-4 border-2 border-black bg-slate-50">
                         <span className="font-bold uppercase text-sm sm:text-base">Giveaway Round</span>
-                        <span className="font-black text-lg sm:text-xl">£5.00</span>
+                        <span className="font-black text-lg sm:text-xl">£2.50</span>
                       </div>
 
                       <div className="bg-blue-50 border-2 border-blue-200 p-3 sm:p-4 rounded">
@@ -1019,7 +1019,7 @@ export default function GiveawayTool() {
                               Loading...
                             </>
                           ) : (
-                            fetchedEntries.length > 0 ? "Pay £5.00 & Pick Winners" : "Pay £5.00 & Fetch Comments"
+                            fetchedEntries.length > 0 ? "Pay £2.50 & Pick Winners" : "Pay £2.50 & Fetch Comments"
                           )}
                         </Button>
 
@@ -1529,3 +1529,4 @@ export default function GiveawayTool() {
     </Layout>
   );
 }
+

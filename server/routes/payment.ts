@@ -27,7 +27,7 @@ export function registerPaymentRoutes(app: Express, deps: PaymentRouteDeps): voi
       }
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: 500,
+        amount: 250,
         currency: "gbp",
         automatic_payment_methods: { enabled: true },
         metadata: { url },
@@ -78,3 +78,4 @@ export function registerPaymentRoutes(app: Express, deps: PaymentRouteDeps): voi
     }
   });
 }
+

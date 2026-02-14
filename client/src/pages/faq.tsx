@@ -16,7 +16,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Do I need to sign up or log in to use PickUsAWinner?",
-    a: "No. PickUsAWinner requires no signup and no login. Free to configure. One-time payment (£5) required to fetch Instagram comments and pick winners. No subscription.",
+    a: "No. PickUsAWinner requires no signup and no login. Free to configure. One-time payment (£2.50) required to fetch Instagram comments and pick winners. No subscription.",
   },
   {
     q: "Can I schedule giveaways?",
@@ -95,3 +95,4 @@ export default function FAQPage() {
     </Layout>
   );
 }
+
