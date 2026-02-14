@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { InstagramScraper } from "../scraper/instagram-scraper";
 import { log } from "../log";
+import { countMentions } from "../instagram";
 
 interface InstagramRouteDeps {
   validateInstagramRequest: any;
@@ -105,6 +106,7 @@ export function registerInstagramRoutes(app: Express, deps: InstagramRouteDeps):
             username: c.username,
             avatar: c.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.username}`,
             comment: c.text,
+            mentionCount: countMentions(c.text),
             platform: "instagram" as const,
             timestamp: c.timestamp,
             fraudScore: Math.min(fraudScore, 100),

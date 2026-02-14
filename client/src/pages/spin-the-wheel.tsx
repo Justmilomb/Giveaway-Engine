@@ -41,6 +41,14 @@ export default function SpinTheWheel() {
     setWinner(null);
   }, []);
 
+  const getWinnerIndexFromRotation = useCallback((finalRotation: number, count: number) => {
+    if (count <= 0) return -1;
+    const segmentAngle = 360 / count;
+    // Pointer is at 12 o'clock. Convert wheel rotation into pointer-relative angle.
+    const pointerRelativeAngle = ((360 - (finalRotation % 360)) + 360) % 360;
+    return Math.floor(pointerRelativeAngle / segmentAngle) % count;
+  }, []);
+
   const spin = useCallback(() => {
     if (entries.length < 2 || spinning) return;
 
@@ -62,9 +70,12 @@ export default function SpinTheWheel() {
 
     setTimeout(() => {
       setSpinning(false);
-      setWinner(entries[targetIndex]);
+      const resolvedIndex = getWinnerIndexFromRotation(totalRotation, entries.length);
+      if (resolvedIndex >= 0) {
+        setWinner(entries[resolvedIndex]);
+      }
     }, 4000);
-  }, [entries, spinning, rotation]);
+  }, [entries, spinning, rotation, getWinnerIndexFromRotation]);
 
   const segmentAngle = entries.length > 0 ? 360 / entries.length : 360;
 

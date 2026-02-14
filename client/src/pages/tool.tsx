@@ -59,6 +59,7 @@ interface Entry {
   id: string;
   username: string;
   comment: string;
+  mentionCount?: number;
   platform: "instagram";
   timestamp?: string;
   fraudScore?: number;
@@ -341,10 +342,10 @@ export default function GiveawayTool() {
 
       // 3. Mentions Filter - count actual @username patterns, not just @ symbols
       if (rules.requireMention) {
-        // Match @username patterns (Instagram usernames: letters, numbers, underscores, periods)
-        const mentionRegex = /@([a-zA-Z0-9_.]+)/g;
-        const mentions = entry.comment?.match(mentionRegex) || [];
-        const mentionCount = mentions.length;
+        const mentionCount =
+          typeof entry.mentionCount === "number"
+            ? entry.mentionCount
+            : (entry.comment?.match(/@([a-zA-Z0-9_.]+)/g) || []).length;
         if (mentionCount < rules.mentions) {
           continue;
         }
@@ -400,10 +401,10 @@ export default function GiveawayTool() {
         // Weighted selection based on mention count
         const weightedPool: Entry[] = [];
         validEntries.forEach(entry => {
-          // Count actual @username mentions, not just @ symbols
-          const mentionRegex = /@([a-zA-Z0-9_.]+)/g;
-          const mentions = entry.comment?.match(mentionRegex) || [];
-          const mentionCount = mentions.length;
+          const mentionCount =
+            typeof entry.mentionCount === "number"
+              ? entry.mentionCount
+              : (entry.comment?.match(/@([a-zA-Z0-9_.]+)/g) || []).length;
           // Base entry + 1 extra entry per mention beyond the minimum
           const entries = 1 + Math.max(0, mentionCount - minMentions);
           for (let i = 0; i < entries; i++) {
@@ -505,7 +506,8 @@ export default function GiveawayTool() {
       mode: "comments",
       winnerCount: winnerCount,
       keyword: filterKeyword,
-      minMentions: minMentions,
+      requireMention: requireMention,
+      minMentions: requireMention ? minMentions : 0,
       duplicateCheck: excludeDuplicates,
       blockList: blockList,
       bonusChances: enableBonusChances,
