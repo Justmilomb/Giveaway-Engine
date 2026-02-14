@@ -13,7 +13,7 @@ export default function GiveawayGenerator() {
     "url": "https://giveaway-engine.com/giveaway-generator",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web Browser",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "offers": { "@type": "Offer", "price": "5", "priceCurrency": "GBP", "description": "One-time payment for Instagram comment fetching. Free to configure. Spin wheel, name picker, option picker are free." },
     "author": { "@type": "Organization", "name": "PickUsAWinner" }
   };
 
@@ -84,7 +84,7 @@ export default function GiveawayGenerator() {
       <SEO
         title="Free Giveaway Generator for Creators - Instagram, YouTube, TikTok, Facebook"
         description="The best free giveaway generator trusted by creators. Pick random winners for Instagram, YouTube, TikTok & Facebook giveaways. One-time payment, no subscriptions. Verified fair random selection with anti-fraud detection."
-        keywords="giveaway generator, giveaway maker, instagram giveaway generator, youtube giveaway, tiktok giveaway generator, facebook giveaway generator, comment picker generator, giveaway generators for creators, trusted by creators, one time payment giveaway generator, giveaway generators, free giveaway tool, social media giveaway, contest picker, raffle generator"
+        keywords="instagram giveaways tool, instagram giveaway tool, instagram giveaway generator, giveaway generator, giveaway maker, youtube giveaway, tiktok giveaway generator, facebook giveaway generator, instagram comments tool, instagram comment picker tool, comment picker generator, giveaway generators for creators, trusted by creators, one time payment giveaway generator, giveaway generators, free giveaway tool, social media giveaway, contest picker, raffle generator"
         url="/giveaway-generator"
         structuredData={structuredData}
       />
@@ -119,10 +119,10 @@ export default function GiveawayGenerator() {
           </div>
         </div>
 
-        {/* Platform Cards */}
+        {/* Platform Cards - compact */}
         <section className="space-y-6">
-          <h2 className="text-3xl sm:text-4xl font-black uppercase text-center">Supported Platforms</h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <h2 className="text-2xl sm:text-3xl font-black uppercase text-center">Supported Platforms</h2>
+          <div className="grid md:grid-cols-2 gap-4">
             {platforms.map((platform, i) => {
               const isComingSoon = platform.status === "coming-soon";
               return (
@@ -203,17 +203,13 @@ export default function GiveawayGenerator() {
           </div>
         </section>
 
-        {/* FAQ */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-black uppercase text-center">Frequently Asked Questions</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            {faqData.mainEntity.map((faq, i) => (
-              <div key={i} className="border-4 border-black bg-white p-6 shadow-neo-sm">
-                <h3 className="font-black text-lg mb-2">{faq.name}</h3>
-                <p className="text-slate-700 font-medium">{faq.acceptedAnswer.text}</p>
-              </div>
-            ))}
-          </div>
+        {/* FAQ - compact, link to full page */}
+        <section className="space-y-4 text-center">
+          <h2 className="text-2xl font-black uppercase">Questions?</h2>
+          <p className="text-slate-700 font-medium max-w-xl mx-auto">How we pick winners, pricing, scheduling, and more.</p>
+          <Link href="/faq" className="neo-btn-secondary inline-flex items-center gap-2">
+            See FAQ <ArrowRight className="w-4 h-4" />
+          </Link>
         </section>
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqData) }} />
