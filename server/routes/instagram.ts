@@ -67,24 +67,8 @@ export function registerInstagramRoutes(app: Express, deps: InstagramRouteDeps):
           });
         }
 
-        const ip = getClientIP(req);
-        let usedPaymentToken = false;
-
-        if (paymentToken && typeof paymentToken === "string") {
-          usedPaymentToken = true;
-          const tokenResult = redeemPurchaseToken(ip, paymentToken);
-          if (!tokenResult.success) {
-            return res.status(402).json({
-              error: tokenResult.error || "Invalid payment token",
-              paymentRequired: true,
-            });
-          }
-        } else if (!consumeCredit(ip)) {
-          return res.status(402).json({
-            error: "No credits remaining. Please complete payment.",
-            paymentRequired: true,
-          });
-        }
+        // Comment scraping is available before payment.
+        // Payment is enforced later when user confirms pick/schedule.
 
         const result = await fetchInstagramComments(url);
 
@@ -119,7 +103,7 @@ export function registerInstagramRoutes(app: Express, deps: InstagramRouteDeps):
           total: result.total,
           postInfo: result.postInfo,
           demo: false,
-          paid: usedPaymentToken,
+          paid: false,
           fraudStats: {
             flagged: entriesWithFraud.filter((e: any) => e.fraudScore > 20).length,
             total: entriesWithFraud.length,

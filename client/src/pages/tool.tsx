@@ -122,7 +122,7 @@ export default function GiveawayTool() {
     }
   }, [winnerCount, filterKeyword, minMentions, requireMention, excludeDuplicates, blockList, enableBonusChances, excludeFraud]);
 
-  // Handle initial form submission - move to settings first, payment comes after settings.
+  // Handle initial form submission - fetch comments first, then let user set rules and pay.
   const handleFetch = async (e: React.FormEvent) => {
     e.preventDefault();
     setFetchError(null);
@@ -133,9 +133,57 @@ export default function GiveawayTool() {
       return;
     }
 
-    setFetchedEntries([]);
-    setValidEntries([]);
-    setStep("options");
+    setStep("fetching");
+    setFetchTimer(FETCH_MAX_SECONDS);
+
+    const timerInterval = setInterval(() => {
+      setFetchTimer(prev => Math.max(0, prev - 1));
+    }, 1000);
+
+    try {
+      const response = await fetch("/api/instagram/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
+
+      const entries = (data.entries || []).map((entry: any) => ({
+        ...entry,
+        fraudScore: entry.fraudScore || 0,
+      }));
+
+      setFetchedEntries(entries);
+      setStep("options");
+
+      const initialValid = filterEntries(entries, {
+        keyword: "",
+        mentions: 1,
+        requireMention: false,
+        duplicates: true,
+        blockList: blockList,
+        excludeFraud: excludeFraud,
+      });
+      setValidEntries(initialValid);
+
+      toast({
+        title: "Success!",
+        description: `Loaded ${entries.length > 200 ? "200+" : entries.length} comments from Instagram`,
+      });
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
+      setStep("input");
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch comments",
+        variant: "destructive",
+      });
+    } finally {
+      clearInterval(timerInterval);
+    }
   };
 
   // Step 1: Create a Stripe PaymentIntent and show card form
@@ -221,59 +269,34 @@ export default function GiveawayTool() {
         return;
       }
 
-      // Instant flow: fetch comments after payment, apply filters, and pick winners.
-      toast({ title: "Payment Successful", description: "Fetching comments..." });
-      setStep("fetching");
-      setFetchTimer(FETCH_MAX_SECONDS);
-
-      const timerInterval = setInterval(() => {
-        setFetchTimer(prev => Math.max(0, prev - 1));
-      }, 1000);
-
-      try {
-        const response = await fetch("/api/instagram/comments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, paymentToken: token }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Failed to fetch comments");
-
-        const entries = (data.entries || []).map((entry: any) => ({
-          ...entry,
-          fraudScore: entry.fraudScore || 0,
-        }));
-
-        const filtered = filterEntries(entries, {
-          keyword: filterKeyword,
-          mentions: minMentions,
-          requireMention,
-          duplicates: excludeDuplicates,
-          blockList,
-          excludeFraud,
-        });
-
-        setFetchedEntries(entries);
-        setValidEntries(filtered);
-
-        if (filtered.length < winnerCount) {
-          setStep("options");
-          toast({
-            title: "Not enough valid entries",
-            description: `Only ${filtered.length} entries matched your rules. Adjust filters and try again.`,
-            variant: "destructive",
+      const currentValid = validEntries.length > 0
+        ? validEntries
+        : filterEntries(fetchedEntries, {
+            keyword: filterKeyword,
+            mentions: minMentions,
+            requireMention,
+            duplicates: excludeDuplicates,
+            blockList,
+            excludeFraud,
           });
-          return;
-        }
 
-        setStep("picking");
-        setTimeout(() => {
-          setWinners(selectWinners(filtered));
-          setStep("results");
-        }, 3000);
-      } finally {
-        clearInterval(timerInterval);
+      if (currentValid.length < winnerCount) {
+        setStep("options");
+        toast({
+          title: "Not enough valid entries",
+          description: `Only ${currentValid.length} entries matched your rules. Adjust filters and try again.`,
+          variant: "destructive",
+        });
+        return;
       }
+
+      setValidEntries(currentValid);
+      toast({ title: "Payment Successful", description: "Picking winners..." });
+      setStep("picking");
+      setTimeout(() => {
+        setWinners(selectWinners(currentValid));
+        setStep("results");
+      }, 3000);
     } catch (error) {
       console.error("Payment error:", error);
       setFetchError(error instanceof Error ? error.message : "Unknown error occurred");
@@ -563,7 +586,7 @@ export default function GiveawayTool() {
 
                   <Button type="submit" className="w-full neo-btn-primary text-lg sm:text-xl py-4 sm:py-6 bg-[#E1306C] hover:bg-[#C13584] border-black text-white mt-4">
                     <Search className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
-                    Continue to Settings
+                    Fetch Comments
                   </Button>
                 </form>
               </motion.div>
@@ -779,7 +802,7 @@ export default function GiveawayTool() {
 
                   <Button
                     onClick={() => setStep("payment")}
-                    disabled={!url.includes("instagram.com")}
+                    disabled={validEntries.length === 0}
                     className="w-full neo-btn-primary text-xl py-6 disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 border-green-700 mb-4"
                   >
                     <PartyPopper className="mr-2 w-6 h-6" />
