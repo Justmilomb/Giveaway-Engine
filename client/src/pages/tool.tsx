@@ -23,7 +23,6 @@ import { CheckoutForm } from "@/components/checkout-form";
 import { getStripe } from "@/lib/stripe";
 
 import { useLocation } from "wouter";
-import { useMediaQuery } from "@/hooks/use-media-query";
 
 const stripeAppearance = {
   theme: "flat" as const,
@@ -109,7 +108,6 @@ export default function GiveawayTool() {
   const [fetchTimer, setFetchTimer] = useState(FETCH_MAX_SECONDS);
 
   const [userGiveaways, setUserGiveaways] = useState<any[]>([]);
-  const isLg = useMediaQuery("(min-width: 1024px)");
 
   const refreshGiveaways = () => {
     // Placeholder for future local storage or session based history
@@ -627,9 +625,9 @@ export default function GiveawayTool() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="neo-box p-4 sm:p-6 md:p-8 bg-white flex flex-col lg:flex-row lg:gap-6"
+                className="neo-box p-4 sm:p-6 md:p-8 bg-white"
               >
-                <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                 <div className="flex items-center justify-between border-b-2 border-black pb-4">
                   <h2 className="text-xl sm:text-2xl font-bold uppercase">Filter Entries</h2>
                   <div className="flex flex-col items-end">
@@ -822,11 +820,6 @@ export default function GiveawayTool() {
                   </Button>
                 </div>
                 </div>
-                {isLg && (
-                  <div className="shrink-0 flex flex-col items-center pt-6 lg:pt-0 lg:max-w-xs">
-                    <AdBanner type="adsense" format="vertical" className="sticky top-28" />
-                  </div>
-                )}
               </motion.div>
             )}
 
