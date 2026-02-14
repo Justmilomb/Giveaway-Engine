@@ -9,14 +9,13 @@ interface SEOProps {
   type?: string;
   noindex?: boolean;
   structuredData?: object;
-  /** Additional structured data (e.g. BreadcrumbList). Merged with structuredData if both provided. */
   additionalStructuredData?: object[];
 }
 
 const defaultTitle = "PickUsAWinner - Instagram Giveaway Generator | No Signup, No Login";
 const defaultDescription =
   "Instagram giveaway generator & comment picker tool. Pick random winners from Instagram comments. Free to configure. One-time payment (£2.50) for credits. No signup, no subscription.";
-const defaultImage = "https://pickusawinner.com/media/social-image.jpg?v=4";
+const defaultImage = "https://pickusawinner.com/filesocialimage.jpg?v=3";
 const baseUrl = "https://pickusawinner.com";
 
 export function SEO({
@@ -35,14 +34,12 @@ export function SEO({
 
   return (
     <Helmet>
-      {/* Primary Meta Tags */}
       <title>{fullTitle}</title>
       <meta name="title" content={fullTitle} />
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
       {noindex && <meta name="robots" content="noindex, nofollow" />}
 
-      {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
       <meta property="og:url" content={fullUrl} />
       <meta property="og:title" content={fullTitle} />
@@ -50,7 +47,6 @@ export function SEO({
       <meta property="og:image" content={image} />
       <meta property="og:image:alt" content={fullTitle} />
 
-      {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:url" content={fullUrl} />
       <meta name="twitter:title" content={fullTitle} />
@@ -58,10 +54,8 @@ export function SEO({
       <meta name="twitter:image" content={image} />
       <meta name="twitter:image:alt" content={fullTitle} />
 
-      {/* Canonical URL */}
       <link rel="canonical" href={fullUrl} />
 
-      {/* Structured Data */}
       {structuredData && (
         <script type="application/ld+json">
           {JSON.stringify(structuredData)}
