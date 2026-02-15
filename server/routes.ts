@@ -81,59 +81,6 @@ export async function registerRoutes(
     adminAuthMiddleware,
   });
 
-  app.post("/api/contact", emailRateLimiter, async (req, res) => {
-    try {
-      const parsed = contactSchema.safeParse(req.body);
-      if (!parsed.success) {
-        const msg = parsed.error.errors[0]?.message ?? "Invalid input";
-        return res.status(400).json({ error: msg });
-      }
-      const { name, email, subject, message } = parsed.data;
-
-      const contactEmail = process.env.CONTACT_EMAIL || "support@pickusawinner.com";
-      const timestamp = format(new Date(), "PPpp");
-
-      const { sendEmail } = await import("./email");
-      const {
-        getContactReceivedHTML,
-        getContactReceivedText,
-        getContactAutoReplyHTML,
-        getContactAutoReplyText,
-      } = await import("./email-templates");
-
-      const contactData = { name, email, subject, message, timestamp };
-
-      const supportSent = await sendEmail({
-        to: contactEmail,
-        subject: `[PickUsAWinner Contact] ${subject}`,
-        text: getContactReceivedText(contactData),
-        html: getContactReceivedHTML(contactData),
-        replyTo: email,
-      });
-
-      const autoReplySent = await sendEmail({
-        to: email,
-        subject: "We received your message - PickUsAWinner",
-        text: getContactAutoReplyText({ name }),
-        html: getContactAutoReplyHTML({ name }),
-      });
-
-      if (!supportSent) {
-        log(`[CONTACT] Failed to send to support (${contactEmail})`, "error");
-        return res.status(500).json({ error: "Failed to send message. Please try again later." });
-      }
-
-      if (!autoReplySent) {
-        log(`[CONTACT] Support email sent but auto-reply failed for ${email}`, "warn");
-      }
-
-      return res.json({ success: true });
-    } catch (err) {
-      log(`[CONTACT] Error: ${err}`, "error");
-      return res.status(500).json({ error: "Something went wrong. Please try again later." });
-    }
-  });
-
   // ============================================
   // SEO ENDPOINTS
   // ============================================
@@ -185,6 +132,8 @@ ${SITEMAP_URLS.map((u) => `  <url>
 
     res.type("application/xml");
     res.send(sitemap);
+  });
+
   registerPublicRoutes(app, {
     emailRateLimiter,
   });
