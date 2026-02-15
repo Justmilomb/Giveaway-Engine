@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import { Browser, Page } from "puppeteer";
+import fs from "fs";
 import { log } from "../log";
 import { ProxyManager, ProxyConfig } from "./proxy-manager";
 import { SessionManager } from "./session-manager";
@@ -67,11 +68,35 @@ export class InstagramScraper {
             log(`Using proxy: ${proxy.host}:${proxy.port}`, "scraper");
         }
 
-        log(`Launching browser (headless: ${this.config.isHeadless})...`, "scraper");
+        const chromiumCandidates = [
+            process.env.SCRAPER_EXECUTABLE_PATH,
+            process.env.PUPPETEER_EXECUTABLE_PATH,
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+        ].filter((p): p is string => typeof p === "string" && p.length > 0);
+
+        let executablePath: string | undefined;
+        if (process.platform === "linux" && (process.arch === "arm" || process.arch === "arm64")) {
+            executablePath = chromiumCandidates.find((p) => fs.existsSync(p));
+            if (!executablePath) {
+                log(
+                    "Raspberry Pi/Linux ARM detected but Chromium path was not found. Set SCRAPER_EXECUTABLE_PATH.",
+                    "scraper",
+                );
+            }
+        } else if (process.env.SCRAPER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH) {
+            executablePath = chromiumCandidates.find((p) => fs.existsSync(p));
+        }
+
+        log(
+            `Launching browser (headless: ${this.config.isHeadless}${executablePath ? `, executable: ${executablePath}` : ""})...`,
+            "scraper",
+        );
         const browser = await puppeteer.launch({
             headless: this.config.isHeadless,
             args,
             defaultViewport: { width: 1366, height: 768 },
+            executablePath,
             // Disable loading of unnecessary resources for speed
             ignoreHTTPSErrors: true,
         });

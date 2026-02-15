@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "instagram:login": "tsx script/manual-login.ts",
     "test-scraper": "tsx server/scraper/test-scraper.ts",
-    "scraper:worker": "tsx script/local-worker.ts"
+    "scraper:worker": "tsx script/local-worker.ts",
+    "scraper:worker:pi": "cross-env SCRAPER_HEADLESS=true tsx script/local-worker.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
