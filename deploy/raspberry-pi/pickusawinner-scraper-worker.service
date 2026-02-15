@@ -1,0 +1,19 @@
+[Unit]
+Description=PickUsAWinner Instagram Scraper Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/giveaway-engine
+Environment=NODE_ENV=production
+EnvironmentFile=/home/pi/giveaway-engine/.env
+ExecStart=/usr/bin/npm run scraper:worker:pi
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
