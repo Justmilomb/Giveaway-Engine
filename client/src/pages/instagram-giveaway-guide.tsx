@@ -11,7 +11,7 @@ export default function InstagramGiveawayGuide() {
     "description": "Complete guide to running Instagram giveaways. Learn the rules, best practices for picking winners fairly, how to avoid scams, and how to grow your audience with comment-to-enter contests.",
     "author": { "@type": "Organization", "name": "PickUsAWinner" },
     "publisher": { "@type": "Organization", "name": "PickUsAWinner" },
-    "url": "https://giveaway-engine.com/instagram-giveaway-guide",
+    "url": "https://pickusawinner.com/instagram-giveaway-guide",
     "datePublished": "2025-06-01",
     "dateModified": "2026-02-01"
   };

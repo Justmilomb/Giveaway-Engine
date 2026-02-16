@@ -84,7 +84,7 @@ export default function SpinTheWheel() {
     "@type": "WebApplication",
     "name": "Spin the Wheel - Free Online Wheel Spinner",
     "description": "Free online spin the wheel tool. Add names, options, or prizes and spin to pick a random winner. Cryptographically fair random selection. No signup required.",
-    "url": "https://giveaway-engine.com/spin-the-wheel",
+    "url": "https://pickusawinner.com/spin-the-wheel",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web Browser",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },

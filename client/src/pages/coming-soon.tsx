@@ -8,7 +8,7 @@ import { SEO } from "@/components/seo";
 export default function ComingSoon() {
     return (
         <Layout>
-            <SEO title="Coming Soon" description="YouTube and TikTok giveaway pickers coming soon" url="/coming-soon" noindex />
+            <SEO title="Coming Soon" description="YouTube and TikTok giveaway pickers coming soon" url="/coming-soon" />
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center space-y-12">
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}

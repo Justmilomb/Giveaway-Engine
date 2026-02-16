@@ -8,7 +8,6 @@ export default function PrivacyPolicy() {
                 title="Privacy Policy"
                 description="PickUsAWinner Privacy Policy - How we handle your data, cookies, and third-party services"
                 url="/privacy"
-                noindex
             />
             <div className="max-w-4xl mx-auto space-y-12 py-12">
                 <h1 className="text-5xl md:text-7xl font-black uppercase italic border-b-8 border-black pb-4">Privacy Policy</h1>
@@ -119,4 +118,3 @@ export default function PrivacyPolicy() {
         </Layout>
     );
 }
-

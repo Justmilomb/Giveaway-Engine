@@ -12,7 +12,7 @@ export default function HowItWorks() {
     "description": "Learn how our giveaway tools use cryptographic randomness, the Fisher-Yates shuffle algorithm, and fraud detection to guarantee fair winner selection.",
     "author": { "@type": "Organization", "name": "PickUsAWinner" },
     "publisher": { "@type": "Organization", "name": "PickUsAWinner" },
-    "url": "https://giveaway-engine.com/how-it-works",
+    "url": "https://pickusawinner.com/how-it-works",
     "datePublished": "2025-01-01",
     "dateModified": "2026-02-01"
   };

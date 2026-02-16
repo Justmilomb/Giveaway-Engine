@@ -8,7 +8,6 @@ export default function TermsOfService() {
                 title="Terms of Service"
                 description="PickUsAWinner Terms of Service - Rules for using our giveaway picker, credit system, and payment terms"
                 url="/terms"
-                noindex
             />
             <div className="max-w-4xl mx-auto space-y-12 py-12">
                 <h1 className="text-5xl md:text-7xl font-black uppercase italic border-b-8 border-black pb-4">Terms of Service</h1>
@@ -136,4 +135,3 @@ export default function TermsOfService() {
         </Layout>
     );
 }
-

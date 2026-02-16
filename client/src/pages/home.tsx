@@ -58,7 +58,7 @@ export default function Home() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "PickUsAWinner",
-    "url": "https://giveaway-engine.com",
+    "url": "https://pickusawinner.com",
     "description": "The simplest random selection toolkit on the web. Instagram giveaway comment picker, spin the wheel, random name picker, and random option picker. Trusted by creators worldwide.",
     "sameAs": []
   };
@@ -383,5 +383,4 @@ export default function Home() {
     </Layout>
   );
 }
-
 

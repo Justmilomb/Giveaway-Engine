@@ -70,7 +70,7 @@ export default function RandomNamePicker() {
     "@type": "WebApplication",
     "name": "Random Name Picker - Pick Names at Random",
     "description": "Free random name picker tool. Enter a list of names and pick winners at random with cryptographically fair selection. Perfect for giveaways, classrooms, raffles, and team building.",
-    "url": "https://giveaway-engine.com/random-name-picker",
+    "url": "https://pickusawinner.com/random-name-picker",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web Browser",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },

@@ -68,7 +68,7 @@ export default function RandomOptionPicker() {
     "@type": "WebApplication",
     "name": "Random Option Picker - Random Choice Maker",
     "description": "Free random option picker and decision maker. Enter your choices and let our cryptographically fair tool pick for you. Perfect for making decisions, picking restaurants, choosing activities, and more.",
-    "url": "https://giveaway-engine.com/random-option-picker",
+    "url": "https://pickusawinner.com/random-option-picker",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web Browser",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },

@@ -10,7 +10,7 @@ export default function GiveawayGenerator() {
     "@type": "WebApplication",
     "name": "PickUsAWinner - Free Giveaway Generator for Creators",
     "description": "The best free giveaway generator for Instagram, YouTube, TikTok, and Facebook. Trusted by creators. one-time payment (£2.50), no subscriptions. Pick random winners with verified fairness.",
-    "url": "https://giveaway-engine.com/giveaway-generator",
+    "url": "https://pickusawinner.com/giveaway-generator",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web Browser",
     "offers": { "@type": "Offer", "price": "2.50", "priceCurrency": "GBP", "description": "one-time payment (£2.50) for Instagram comment fetching. Free to configure. Spin wheel, name picker, option picker are free." },
@@ -217,5 +217,4 @@ export default function GiveawayGenerator() {
     </Layout>
   );
 }
-
 
