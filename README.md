@@ -154,10 +154,10 @@ Return JSON responses with `message` or `error` fields. Use HTTP status codes co
 
 ### Scheduled Giveaways
 
-- `scheduler.ts` runs every 60 seconds
-- Polls database for pending giveaways
-- Fetches comments, filters, picks winners, sends email
-- Stateless design — can run on multiple servers
+- Giveaways are queued to the connected scraper worker immediately on schedule create/update
+- Worker persists queue locally in `SCRAPER_JOBS_FILE` (default `worker-jobs.json`)
+- Worker prepares winners 3 minutes before scheduled time, finalizes at scheduled time, then posts result back
+- Server marks giveaway completed and sends result email (if SMTP configured)
 
 ### Email
 
@@ -198,6 +198,9 @@ Create a `.env` file (see `.env.example`):
 DATABASE_URL=postgresql://...          # PostgreSQL (optional)
 INSTAGRAM_USERNAME=...                 # For Puppeteer scraper
 INSTAGRAM_PASSWORD=...                 # For Puppeteer scraper
+SCRAPER_RELAY_SECRET=...               # Shared secret for worker relay
+SCRAPER_RESULT_SECRET=...              # Optional callback auth secret (defaults to relay secret)
+SCRAPER_JOBS_FILE=worker-jobs.json     # Worker-local persistent schedule queue file
 SMTP_HOST=...                          # Email SMTP
 SMTP_PORT=...
 SMTP_SECURE=false
@@ -210,11 +213,12 @@ ADMIN_API_KEY=...                      # Admin endpoints
 STRIPE_SECRET_KEY=...                  # Payments
 STRIPE_PUBLISHABLE_KEY=...
 PORT=5000                              # Server port
+DATA_FILE=/var/data/db.json            # Use a persistent disk path in production
 ```
 
 ## Database
 
-Using **Drizzle ORM** with PostgreSQL (optional). Schema in `shared/schema.ts`:
+Using **Drizzle ORM** with PostgreSQL (optional). If `DATABASE_URL` is set, runtime storage uses PostgreSQL (recommended for persistence on ephemeral hosts). Schema in `shared/schema.ts`:
 - **users** — id, firstName, username, email, password, createdAt
 - **giveaways** — id, userId, scheduledFor, status, config, winners, accessToken, createdAt
 

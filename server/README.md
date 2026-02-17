@@ -79,7 +79,7 @@ Global middleware runs in order:
 
 ### Database
 
-Using **Drizzle ORM** (TypeScript-first, strongly typed).
+Using **Drizzle ORM** (TypeScript-first, strongly typed). If `DATABASE_URL` is set, storage runs on PostgreSQL instead of local `db.json`.
 
 Schema in `shared/schema.ts`:
 ```ts
@@ -175,6 +175,11 @@ setInterval(async () => {
 
 Stateless design — safe to run on multiple servers.
 
+For worker-owned scheduled giveaways (default flow):
+- API queues schedule to connected worker immediately.
+- Worker persists jobs locally (`SCRAPER_JOBS_FILE`) and prepares winners at T-3 minutes.
+- Worker posts final result to `/api/internal/scheduled-result` at scheduled time.
+
 ## Development
 
 ### Start Server
@@ -214,6 +219,9 @@ Create `.env` (see `.env.example`):
 DATABASE_URL=postgresql://user:pass@localhost/db
 INSTAGRAM_USERNAME=your-ig-username
 INSTAGRAM_PASSWORD=your-ig-password
+SCRAPER_RELAY_SECRET=your-shared-secret
+SCRAPER_RESULT_SECRET=your-shared-secret
+SCRAPER_JOBS_FILE=worker-jobs.json
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
@@ -222,6 +230,7 @@ STRIPE_SECRET_KEY=sk_live_...
 STRIPE_PUBLISHABLE_KEY=pk_live_...
 ADMIN_API_KEY=your-admin-key
 PORT=5000
+DATA_FILE=/var/data/db.json
 ```
 
 ## Key Files

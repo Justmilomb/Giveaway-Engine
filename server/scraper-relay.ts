@@ -21,10 +21,24 @@ interface PendingRequest {
     timeout: ReturnType<typeof setTimeout>;
 }
 
+interface PendingScheduleAck {
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+}
+
+interface RelayScheduleJob {
+    giveawayId: string;
+    scheduledFor: string;
+    config: any;
+    action?: "upsert" | "cancel";
+}
+
 class ScraperRelay {
     private wss: WebSocketServer | null = null;
     private workerSocket: WebSocket | null = null;
     private pendingRequests: Map<string, PendingRequest> = new Map();
+    private pendingScheduleAcks: Map<string, PendingScheduleAck> = new Map();
     private requestCounter = 0;
 
     /**
@@ -95,6 +109,11 @@ class ScraperRelay {
                     pending.reject(new Error("Worker disconnected"));
                     this.pendingRequests.delete(id);
                 }
+                for (const [id, pending] of this.pendingScheduleAcks) {
+                    clearTimeout(pending.timeout);
+                    pending.reject(new Error("Worker disconnected"));
+                    this.pendingScheduleAcks.delete(id);
+                }
             });
 
             ws.on("error", (err) => {
@@ -122,6 +141,17 @@ class ScraperRelay {
                 } else {
                     log(`Worker returned ${message.result?.comments?.length || 0} comments for ${message.requestId}`, "relay");
                     pending.resolve(message.result);
+                }
+            }
+        } else if (message.type === "schedule_ack") {
+            const pending = this.pendingScheduleAcks.get(message.requestId);
+            if (pending) {
+                clearTimeout(pending.timeout);
+                this.pendingScheduleAcks.delete(message.requestId);
+                if (message.error) {
+                    pending.reject(new Error(message.error));
+                } else {
+                    pending.resolve();
                 }
             }
         } else if (message.type === "heartbeat") {
@@ -161,6 +191,28 @@ class ScraperRelay {
                 type: "scrape_request",
                 requestId,
                 postUrl,
+            }));
+        });
+    }
+
+    async scheduleJob(job: RelayScheduleJob, timeoutMs: number = 20 * 1000): Promise<void> {
+        if (!this.isWorkerConnected()) {
+            throw new Error("No scraper worker connected. Run the local worker script on your computer.");
+        }
+
+        const requestId = `sched_${++this.requestCounter}_${Date.now()}`;
+
+        return new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                this.pendingScheduleAcks.delete(requestId);
+                reject(new Error(`Schedule ack timed out after ${timeoutMs / 1000}s`));
+            }, timeoutMs);
+
+            this.pendingScheduleAcks.set(requestId, { resolve, reject, timeout });
+            this.workerSocket!.send(JSON.stringify({
+                type: "schedule_job",
+                requestId,
+                job,
             }));
         });
     }

@@ -27,6 +27,13 @@ let transporter: nodemailer.Transporter | null = null;
 let isTransportVerified = false;
 let verifyPromise: Promise<void> | null = null;
 
+function resetTransporter(reason: string): void {
+    transporter = null;
+    isTransportVerified = false;
+    verifyPromise = null;
+    console.warn(`[EMAIL] SMTP transporter reset: ${reason}`);
+}
+
 function getTransporter(): nodemailer.Transporter | null {
     if (transporter) {
         return transporter;
@@ -89,6 +96,7 @@ async function ensureTransportVerified(emailTransporter: nodemailer.Transporter)
         }).catch((error) => {
             const err = error instanceof Error ? error : new Error(String(error));
             console.error("[EMAIL] SMTP verification failed:", err.message);
+            resetTransporter(`verify error: ${err.message}`);
             throw err;
         }).finally(() => {
             verifyPromise = null;
@@ -110,6 +118,17 @@ function shouldRetryWithAuthSender(errorMessage: string): boolean {
         msg.includes("mail from command failed") ||
         msg.includes("from address") ||
         msg.includes("sender rejected")
+    );
+}
+
+function shouldResetTransportOnError(errorMessage: string): boolean {
+    const msg = errorMessage.toLowerCase();
+    return (
+        msg.includes("econnreset") ||
+        msg.includes("etimedout") ||
+        msg.includes("connection closed") ||
+        msg.includes("socket closed") ||
+        msg.includes("greeting never received")
     );
 }
 
@@ -203,6 +222,7 @@ export async function sendEmail({ to, subject, text, html, replyTo }: EmailOptio
         const verified = await ensureTransportVerified(emailTransporter);
         if (!verified) {
             console.error("[EMAIL] SMTP verification failed. Email was not sent.");
+            resetTransporter("verification failed");
             return false;
         }
 
@@ -233,6 +253,9 @@ export async function sendEmail({ to, subject, text, html, replyTo }: EmailOptio
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         console.error(`[EMAIL] Failed to send email to ${to}:`, err.message);
+        if (shouldResetTransportOnError(err.message)) {
+            resetTransporter(`transport error: ${err.message}`);
+        }
         if (err.message?.includes("Invalid login") || err.message?.includes("authentication")) {
             console.error("[EMAIL] Hint: For iCloud, use an App-Specific Password from appleid.apple.com");
         }

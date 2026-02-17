@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { format } from "date-fns";
 import { log } from "../log";
 import { storage } from "../storage";
+import { scraperRelay } from "../scraper-relay";
+import { sendEmail } from "../email";
+import { getResultsEmailHTML, getResultsEmailText } from "../email-templates";
 
 interface GiveawayRouteDeps {
   giveawayRateLimiter: any;
@@ -40,6 +43,19 @@ function isValidDateValue(value: unknown): value is string | number | Date {
   return !Number.isNaN(parsed.getTime());
 }
 
+function getInternalScraperSecret(): string {
+  return process.env.SCRAPER_RESULT_SECRET || process.env.SCRAPER_RELAY_SECRET || "";
+}
+
+async function queueWorkerJob(giveaway: any, action: "upsert" | "cancel" = "upsert"): Promise<void> {
+  await scraperRelay.scheduleJob({
+    giveawayId: giveaway.id,
+    scheduledFor: new Date(giveaway.scheduledFor).toISOString(),
+    config: giveaway.config,
+    action,
+  });
+}
+
 export function registerGiveawayRoutes(app: Express, deps: GiveawayRouteDeps): void {
   const {
     giveawayRateLimiter,
@@ -69,6 +85,12 @@ export function registerGiveawayRoutes(app: Express, deps: GiveawayRouteDeps): v
 
         if (typeof (config as any).url !== "string" || !(config as any).url.includes("instagram.com")) {
           return res.status(400).json({ error: "A valid Instagram URL is required in config.url" });
+        }
+
+        if (!scraperRelay.isWorkerConnected()) {
+          return res.status(503).json({
+            error: "Scheduler worker is offline. Please start/reconnect the worker and try again.",
+          });
         }
 
         if (!paymentToken || typeof paymentToken !== "string") {
@@ -103,13 +125,30 @@ export function registerGiveawayRoutes(app: Express, deps: GiveawayRouteDeps): v
         }
 
         const requesterUserId = req.isAuthenticated() ? (req.user as any).id : "anonymous";
+        const schedulerMeta = {
+          queuedAt: new Date().toISOString(),
+          owner: "worker",
+        };
+        const configWithScheduler = {
+          ...(config as any),
+          _scheduler: schedulerMeta,
+        };
 
         const giveaway = await storage.createGiveaway({
           userId: requesterUserId,
           scheduledFor: scheduledDate,
-          config,
+          config: configWithScheduler as any,
           status: status || "pending",
         });
+
+        try {
+          await queueWorkerJob(giveaway, "upsert");
+        } catch (queueError) {
+          await storage.deleteGiveaway((giveaway as any).id);
+          return res.status(503).json({
+            error: "Scheduler worker unavailable. Giveaway was not queued. Please retry in a moment.",
+          });
+        }
 
         const contactEmail = (config as any).contactEmail;
         if (contactEmail && (giveaway as any).accessToken) {
@@ -204,9 +243,32 @@ export function registerGiveawayRoutes(app: Express, deps: GiveawayRouteDeps): v
       }
 
       const updates: any = {};
-      if (scheduledFor) updates.scheduledFor = new Date(scheduledFor);
-      if (config) updates.config = config;
+      const nextScheduledFor = scheduledFor ? new Date(scheduledFor) : new Date(giveaway.scheduledFor);
+      if (scheduledFor) updates.scheduledFor = nextScheduledFor;
+      if (config || scheduledFor) {
+        const baseConfig = config || (giveaway as any).config;
+        updates.config = {
+          ...baseConfig,
+          _scheduler: {
+            queuedAt: new Date().toISOString(),
+            owner: "worker",
+          },
+        };
+      }
       if (status) updates.status = status;
+
+      const preview = {
+        ...giveaway,
+        ...updates,
+      };
+
+      try {
+        await queueWorkerJob({ ...preview, scheduledFor: nextScheduledFor }, "upsert");
+      } catch (queueError) {
+        return res.status(503).json({
+          error: "Failed to sync updated giveaway to worker queue. Please retry.",
+        });
+      }
 
       const updated = await storage.updateGiveaway(giveaway.id, updates);
       if (!updated) {
@@ -239,6 +301,14 @@ export function registerGiveawayRoutes(app: Express, deps: GiveawayRouteDeps): v
         });
       }
 
+      try {
+        await queueWorkerJob(giveaway, "cancel");
+      } catch (queueError) {
+        return res.status(503).json({
+          error: "Failed to cancel giveaway in worker queue. Please retry.",
+        });
+      }
+
       const deleted = await storage.deleteGiveaway(giveaway.id);
       if (!deleted) {
         return res.status(500).json({ error: "Failed to delete giveaway" });
@@ -248,6 +318,75 @@ export function registerGiveawayRoutes(app: Express, deps: GiveawayRouteDeps): v
     } catch (error) {
       log(`Delete Giveaway Error: ${error}`, "error");
       return res.status(500).json({ error: "Failed to delete giveaway" });
+    }
+  });
+
+  app.post("/api/internal/scheduled-result", async (req, res) => {
+    try {
+      const secret = req.get("x-scraper-secret") || "";
+      const expectedSecret = getInternalScraperSecret();
+      if (!expectedSecret || secret !== expectedSecret) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { giveawayId, status, winners, totalEntries, error } = req.body || {};
+      if (!giveawayId || typeof giveawayId !== "string") {
+        return res.status(400).json({ error: "Missing giveawayId" });
+      }
+      if (status !== "completed" && status !== "failed") {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const giveaway = await storage.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return res.status(404).json({ error: "Giveaway not found" });
+      }
+
+      if ((giveaway as any).status === "completed" || (giveaway as any).status === "failed") {
+        return res.json({ success: true, deduped: true });
+      }
+
+      if (status === "failed") {
+        await storage.updateGiveawayStatus(giveawayId, "failed");
+        log(`[Worker] Giveaway ${giveawayId} marked failed: ${error || "unknown error"}`, "error");
+        return res.json({ success: true });
+      }
+
+      const finalWinners = Array.isArray(winners) ? winners : [];
+      await storage.updateGiveawayStatus(giveawayId, "completed", finalWinners);
+
+      const user = giveaway.userId !== "anonymous" ? await storage.getUser(giveaway.userId) : null;
+      const targetEmail = user?.email || (giveaway as any).config?.contactEmail;
+      if (targetEmail) {
+        const resultsSent = await sendEmail({
+          to: targetEmail,
+          subject: "🏆 Your Giveaway Results Are Ready!",
+          text: getResultsEmailText({
+            winners: finalWinners.map((w: any) => ({
+              username: w.username,
+              comment: w.text,
+            })),
+            totalEntries: Number(totalEntries || finalWinners.length || 0),
+            postUrl: (giveaway as any).config?.url,
+          }),
+          html: getResultsEmailHTML({
+            winners: finalWinners.map((w: any) => ({
+              username: w.username,
+              comment: w.text,
+            })),
+            totalEntries: Number(totalEntries || finalWinners.length || 0),
+            postUrl: (giveaway as any).config?.url,
+          }),
+        });
+        if (!resultsSent) {
+          log(`[EMAIL] Failed to send scheduled results email for giveaway ${giveawayId} to ${targetEmail}`, "error");
+        }
+      }
+
+      return res.json({ success: true });
+    } catch (endpointError) {
+      log(`Worker Scheduled Result Error: ${endpointError}`, "error");
+      return res.status(500).json({ error: "Failed to process scheduled result" });
     }
   });
 }
