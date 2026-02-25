@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { log } from "../log";
+import { getAllArticles } from "../markdown";
+import { batchSubmitArticles } from "../indexnow";
 
 interface AdminRouteDeps {
   adminAuthMiddleware: any;
@@ -72,6 +74,31 @@ export function registerAdminRoutes(app: Express, deps: AdminRouteDeps): void {
           configured: false,
           verified: false,
           error: error instanceof Error ? error.message : "Failed to check email health",
+        });
+      }
+    },
+  );
+
+  app.post("/api/admin/reindex",
+    adminAuthMiddleware,
+    async (_req, res) => {
+      try {
+        log("[ADMIN] Triggering IndexNow reindex of all articles");
+        const articles = await getAllArticles();
+        const slugs = articles.map((a) => a.slug);
+
+        await batchSubmitArticles(slugs);
+
+        log(`[ADMIN] Reindex complete: ${slugs.length} articles submitted to IndexNow`);
+        return res.json({
+          success: true,
+          articlesSubmitted: slugs.length,
+          articles: slugs,
+        });
+      } catch (error) {
+        log(`[ADMIN] Reindex Error: ${error}`, "error");
+        return res.status(500).json({
+          error: error instanceof Error ? error.message : "Failed to reindex",
         });
       }
     },

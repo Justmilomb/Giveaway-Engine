@@ -29,6 +29,7 @@ import PressPage from "@/pages/press";
 import ContactPage from "@/pages/contact";
 import { CookieConsent } from "@/components/CookieConsent";
 import FAQPage from "@/pages/faq";
+import ArticlePage from "@/pages/article";
 
 function Router() {
   return (
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/tiktok" component={TikTokPage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/schedule/:token" component={SchedulePage} />
+      <Route path="/article/:slug" component={ArticlePage} />
       <Route path="/coming-soon" component={ComingSoon} />
       <Route path="/press" component={PressPage} />
       <Route path="/contact" component={ContactPage} />

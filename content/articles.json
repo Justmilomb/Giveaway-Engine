@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-02-25T21:47:35.013Z",
+  "count": 3,
+  "articles": [
+    {
+      "title": "Best Instagram Comment Picker Tools in 2026",
+      "slug": "best-instagram-comment-picker-tools-2026",
+      "description": "Complete review of the top Instagram comment picker tools for giveaways. Compare features, pricing, and reliability to choose the best random winner selector for your Instagram contests.",
+      "keywords": "instagram comment picker, best instagram picker, giveaway tools 2026, instagram winner picker, comment picker tool, instagram giveaway picker, random comment picker",
+      "publishDate": "2026-02-25",
+      "lastModified": "2026-02-25",
+      "category": "Reviews",
+      "schemaType": "Review",
+      "relatedArticles": [
+        "how-to-pick-instagram-winner",
+        "what-is-random-name-picker"
+      ],
+      "readingTime": "6 min read"
+    },
+    {
+      "title": "How to Pick a Random Instagram Winner in 2026",
+      "slug": "how-to-pick-instagram-winner",
+      "description": "Step-by-step guide to picking fair winners from Instagram comments. Learn how to configure filters, verify entries, and ensure cryptographically random winner selection.",
+      "keywords": "how to pick instagram winner, instagram giveaway tutorial, pick random winner instagram, instagram contest winner, how to run instagram giveaway, pick winner from comments",
+      "publishDate": "2026-02-25",
+      "lastModified": "2026-02-25",
+      "category": "How-To",
+      "schemaType": "HowTo",
+      "relatedArticles": [
+        "best-instagram-comment-picker-tools-2026",
+        "what-is-random-name-picker"
+      ],
+      "readingTime": "7 min read"
+    },
+    {
+      "title": "What is a Random Name Picker? Complete Guide",
+      "slug": "what-is-random-name-picker",
+      "description": "Learn what random name pickers are, how they work, and why they're essential for fair giveaways, classroom selections, team assignments, and more. Includes cryptographic randomness explained.",
+      "keywords": "random name picker, name picker tool, random name generator, pick random name, name selector, classroom name picker, fair random selection",
+      "publishDate": "2026-02-25",
+      "lastModified": "2026-02-25",
+      "category": "Guides",
+      "schemaType": "Article",
+      "relatedArticles": [
+        "how-to-pick-instagram-winner",
+        "best-instagram-comment-picker-tools-2026"
+      ],
+      "readingTime": "7 min read"
+    }
+  ]
+}

@@ -25,6 +25,8 @@ import { registerGiveawayRoutes } from "./routes/giveaways";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerAdRoutes } from "./routes/ads";
 import { registerPublicRoutes } from "./routes/public";
+import { registerArticleRoutes } from "./routes/articles";
+import { getAllArticles } from "./markdown";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -106,11 +108,13 @@ export async function registerRoutes(
     adminAuthMiddleware,
   });
 
+  registerArticleRoutes(app);
+
   // ============================================
   // SEO ENDPOINTS
   // ============================================
 
-  const INDEXNOW_KEY = "8466da73837f479186345615201a4510";
+  const INDEXNOW_KEY = "2d3b9af4fb684c5cb646d6f9e42ffce8";
   const BASE_URL = "https://pickusawinner.com";
 
   const SITEMAP_URLS = [
@@ -147,22 +151,45 @@ Sitemap: ${BASE_URL}/sitemap.xml
 `);
   });
 
-  app.get("/sitemap.xml", (_req, res) => {
-    const currentDate = new Date().toISOString().split("T")[0];
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const currentDate = new Date().toISOString().split("T")[0];
 
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+      // Get dynamic article URLs
+      const articles = await getAllArticles();
+      const articleUrls = articles.map((a) => ({
+        loc: `/article/${a.slug}`,
+        lastmod: a.lastModified,
+        changefreq: "monthly",
+        priority: "0.7",
+      }));
+
+      // Combine static URLs with current date as lastmod
+      const staticUrlsWithDate = SITEMAP_URLS.map((u) => ({
+        ...u,
+        lastmod: currentDate,
+      }));
+
+      // Combine static and dynamic URLs
+      const allUrls = [...staticUrlsWithDate, ...articleUrls];
+
+      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${SITEMAP_URLS.map((u) => `  <url>
+${allUrls.map((u) => `  <url>
     <loc>${BASE_URL}${u.loc}</loc>
-    <lastmod>${currentDate}</lastmod>
+    <lastmod>${u.lastmod}</lastmod>
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`).join("\n")}
 </urlset>`;
 
-    res.type("application/xml");
-    res.send(sitemap);
+      res.type("application/xml");
+      res.send(sitemap);
+    } catch (error) {
+      log(`[SITEMAP] Error generating sitemap: ${error}`);
+      res.status(500).send("Error generating sitemap");
+    }
   });
 
   registerPublicRoutes(app, {

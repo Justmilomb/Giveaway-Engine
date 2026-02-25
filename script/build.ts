@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
+import { generateArticleIndex } from "../server/markdown.js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -31,10 +32,18 @@ const allowlist = [
   "xlsx",
   "zod",
   "zod-validation-error",
+  "remark",
+  "remark-html",
+  "remark-gfm",
+  "gray-matter",
+  "reading-time",
 ];
 
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
+
+  console.log("generating article index...");
+  await generateArticleIndex();
 
   console.log("building client...");
   await viteBuild();
