@@ -147,7 +147,11 @@ Disallow: /api/
 Disallow: /schedule/
 Disallow: /analytics
 
+# Sitemaps
 Sitemap: ${BASE_URL}/sitemap.xml
+
+# Crawl delay (optional - helps with crawl budget)
+Crawl-delay: 1
 `);
   });
 

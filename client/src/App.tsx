@@ -30,6 +30,7 @@ import ContactPage from "@/pages/contact";
 import { CookieConsent } from "@/components/CookieConsent";
 import FAQPage from "@/pages/faq";
 import ArticlePage from "@/pages/article";
+import SitemapPage from "@/pages/sitemap";
 
 function Router() {
   return (
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/press" component={PressPage} />
       <Route path="/contact" component={ContactPage} />
       <Route path="/faq" component={FAQPage} />
+      <Route path="/sitemap" component={SitemapPage} />
       <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/terms" component={TermsOfService} />
       <Route component={NotFound} />
