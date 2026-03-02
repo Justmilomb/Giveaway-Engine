@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Clock, Calendar as CalendarIcon, Save, X, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { parseApiError } from "@/lib/error-messages";
 import { SEO } from "@/components/seo";
 
 interface Giveaway {
@@ -183,9 +184,10 @@ export default function SchedulePage() {
         description: "Giveaway settings updated successfully.",
       });
     } catch (error: any) {
+      const friendly = parseApiError(error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to save changes",
+        title: "Couldn't Save Changes",
+        description: friendly.description,
         variant: "destructive",
       });
     } finally {
@@ -217,9 +219,10 @@ export default function SchedulePage() {
         window.location.href = "/";
       }, 2000);
     } catch (error: any) {
+      const friendly = parseApiError(error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to cancel giveaway",
+        title: "Couldn't Cancel Giveaway",
+        description: friendly.description,
         variant: "destructive",
       });
     } finally {

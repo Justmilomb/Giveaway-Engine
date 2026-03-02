@@ -31,7 +31,7 @@ export function registerAdminRoutes(app: Express, deps: AdminRouteDeps): void {
       } catch (error) {
         log(`Analytics Error: ${error}`, "error");
         return res.status(500).json({
-          error: error instanceof Error ? error.message : "Failed to fetch analytics",
+          error: "Failed to fetch analytics",
         });
       }
     },
@@ -71,7 +71,7 @@ export function registerAdminRoutes(app: Express, deps: AdminRouteDeps): void {
         return res.status(500).json({
           configured: false,
           verified: false,
-          error: error instanceof Error ? error.message : "Failed to check email health",
+          error: "Failed to check email health",
         });
       }
     },
