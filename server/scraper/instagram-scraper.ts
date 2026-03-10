@@ -522,7 +522,10 @@ export class InstagramScraper {
                     if (el.closest('button') || el.closest('time')) continue;
 
                     const elText = (el.textContent || '').trim();
-                    if (elText.length < 3) continue;
+                    if (elText.length === 0) continue;
+                    // Allow short text if it contains emojis (e.g. "❤️", "😁", "🔥🔥")
+                    const hasEmoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(elText);
+                    if (elText.length < 3 && !hasEmoji) continue;
                     if (usernamePattern.test(elText)) continue;
                     if (timestampPattern.test(elText)) continue;
                     if (/^\d+\s*likes?$/i.test(elText)) continue;
@@ -774,9 +777,12 @@ export class InstagramScraper {
      * - Faster overall operation
      * - Better error handling
      */
-    async fetchComments(postUrl: string, targetCommentCount: number = 2000): Promise<FetchCommentsResult> {
+    async fetchComments(postUrl: string, targetCommentCount: number = 100000): Promise<FetchCommentsResult> {
         log(`Starting comment scraper for: ${postUrl} (target: ${targetCommentCount})`, "scraper");
         const startTime = Date.now();
+        // Hard 2-minute deadline for the entire scrape
+        const SCRAPE_DEADLINE_MS = 120_000;
+        const scrapeDeadline = startTime + SCRAPE_DEADLINE_MS;
 
         try {
             // Launch browser
@@ -877,7 +883,7 @@ export class InstagramScraper {
             const apiClient = new InstagramApiClient();
             let directApiCount = 0;
             try {
-                const directResult = await apiClient.fetchComments(page, postUrl, targetCommentCount);
+                const directResult = await apiClient.fetchComments(page, postUrl, targetCommentCount, scrapeDeadline);
                 for (const comment of directResult.comments) {
                     const key = `${comment.username}:${comment.text.substring(0, 50)}`;
                     if (!capturedComments.has(key)) {
@@ -897,7 +903,7 @@ export class InstagramScraper {
             }
 
             let domComments: InstagramComment[] = [];
-            if (!skipScroll) {
+            if (!skipScroll && Date.now() < scrapeDeadline) {
                 // ── Phase 2: Scroll + network interception fallback ───────
                 // Initial button clicking
                 log("Looking for 'View all comments' buttons...", "scraper");
@@ -909,7 +915,7 @@ export class InstagramScraper {
                 await this.scrollCommentsSection(page, capturedComments, lastApiResponseTime, this.config.maxScrolls, targetCommentCount);
 
                 // ── Phase 3: DOM extraction if still short ────────────────
-                if (capturedComments.size < targetCommentCount) {
+                if (capturedComments.size < targetCommentCount && Date.now() < scrapeDeadline) {
                     log("Phase 3: Extracting comments from DOM...", "scraper");
                     await this.randomDelay(1000, 1500);
                     domComments = await this.extractComments(page);

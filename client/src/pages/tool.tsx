@@ -692,14 +692,17 @@ export default function GiveawayTool() {
 
                   <div className="space-y-4">
                     <Label className="font-bold text-lg uppercase flex items-center gap-2">
-                      <Hash className="w-5 h-5" /> Must Include Hashtag
+                      <Hash className="w-5 h-5" /> Must Include Word / Emoji
                     </Label>
                     <Input
-                      placeholder="e.g. #giveaway"
+                      placeholder="e.g. #giveaway, ❤️, 😁, or any word"
                       className="neo-input"
                       value={filterKeyword}
                       onChange={(e) => setFilterKeyword(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Comments must contain this text, emoji, or hashtag to be valid entries
+                    </p>
                   </div>
 
                   {/* Bonus Chances Toggle */}
