@@ -333,10 +333,24 @@ export default function GiveawayTool() {
         continue;
       }
 
-      // 2. Keyword Filter
+      // 2. Keyword / Emoji Filter
       if (rules.keyword) {
-        if (!entry.comment || !entry.comment.toLowerCase().includes(rules.keyword.toLowerCase())) {
+        if (!entry.comment) {
           continue;
+        }
+        // Check if the keyword is purely emoji (no letters/digits)
+        const isEmojiKeyword = /^[\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D\s]+$/u.test(rules.keyword) &&
+                               !/[a-zA-Z0-9]/.test(rules.keyword);
+        if (isEmojiKeyword) {
+          // For emoji keywords, do a direct includes check (case-insensitive doesn't apply)
+          if (!entry.comment.includes(rules.keyword.trim())) {
+            continue;
+          }
+        } else {
+          // For text/hashtag keywords, do case-insensitive match
+          if (!entry.comment.toLowerCase().includes(rules.keyword.toLowerCase())) {
+            continue;
+          }
         }
       }
 
@@ -692,14 +706,17 @@ export default function GiveawayTool() {
 
                   <div className="space-y-4">
                     <Label className="font-bold text-lg uppercase flex items-center gap-2">
-                      <Hash className="w-5 h-5" /> Must Include Hashtag
+                      <Hash className="w-5 h-5" /> Must Include Word / Emoji
                     </Label>
                     <Input
-                      placeholder="e.g. #giveaway"
+                      placeholder="e.g. #giveaway, ❤️, 😁, or any word"
                       className="neo-input"
                       value={filterKeyword}
                       onChange={(e) => setFilterKeyword(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Filter by hashtag, emoji, or any text. Comments must contain this to be a valid entry.
+                    </p>
                   </div>
 
                   {/* Bonus Chances Toggle */}
