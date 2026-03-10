@@ -9,7 +9,8 @@ import { InstagramComment } from "../instagram";
  */
 export class InstagramApiClient {
     // Maximum time (ms) to spend on API calls before returning what we have
-    private static readonly API_TIME_BUDGET_MS = 45_000; // 45 seconds
+    // Raised to 150s to support fetching large posts (34k+ comments) within the 3-minute window
+    private static readonly API_TIME_BUDGET_MS = 150_000; // 150 seconds
 
     /**
      * Primary entry point: fetch comments for a post via direct API calls.
@@ -230,7 +231,8 @@ export class InstagramApiClient {
         let endCursor: string | null = null;
         let hasNext = true;
         const PER_PAGE = 50;
-        const MAX_PAGES = Math.ceil(targetCount / PER_PAGE) + 5;
+        // Allow enough pages to reach targetCount; deadline will enforce the time limit
+        const MAX_PAGES = Math.ceil(targetCount / PER_PAGE) + 10;
 
         // Query hashes (GET) for parent comments — older but still working
         const queryHashes = [
@@ -385,7 +387,7 @@ export class InstagramApiClient {
             );
 
             if (allComments.size >= targetCount) break;
-            await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
+            await new Promise((r) => setTimeout(r, 50 + Math.random() * 100));
         }
 
         // If query_hash capped out early but we haven't tried doc_id yet, try it
@@ -465,7 +467,7 @@ export class InstagramApiClient {
                     }
 
                     if (allComments.size >= targetCount) break;
-                    await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
+                    await new Promise((r) => setTimeout(r, 50 + Math.random() * 100));
                 }
                 if (allComments.size > 0) break; // found a working doc_id
             }
@@ -484,7 +486,7 @@ export class InstagramApiClient {
                 const thread = threadsToFetch[ti];
                 let threadCursor: string | null = thread.cursor || null;
                 let threadHasNext = true;
-                const MAX_THREAD_PAGES = 20;
+                const MAX_THREAD_PAGES = 50;
 
                 for (let tp = 0; tp < MAX_THREAD_PAGES && threadHasNext; tp++) {
                     if (Date.now() >= deadline) break;
@@ -522,7 +524,7 @@ export class InstagramApiClient {
                     }
 
                     if (allComments.size >= targetCount || newCount === 0) break;
-                    await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
+                    await new Promise((r) => setTimeout(r, 30 + Math.random() * 70));
                 }
             }
         }
@@ -546,7 +548,7 @@ export class InstagramApiClient {
         let minId: string | null = null;
         let hasMore = true;
         const PER_PAGE_V1 = 50;
-        const MAX_PAGES = Math.ceil(targetCount / PER_PAGE_V1) + 5;
+        const MAX_PAGES = Math.ceil(targetCount / PER_PAGE_V1) + 10;
 
         // Collect parent comment PKs with more child comments to fetch
         const childThreads: { commentPk: string; cursor: string }[] = [];
@@ -596,7 +598,7 @@ export class InstagramApiClient {
             );
 
             if (allComments.size >= targetCount) break;
-            await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
+            await new Promise((r) => setTimeout(r, 50 + Math.random() * 100));
         }
 
         // ── Phase B: fetch child comment threads ──────────────────────
@@ -609,7 +611,7 @@ export class InstagramApiClient {
                 const thread = childThreads[ti];
                 let childMinId: string | null = thread.cursor || null;
                 let childHasMore = true;
-                const MAX_CHILD_PAGES = 20;
+                const MAX_CHILD_PAGES = 50;
 
                 for (let cp = 0; cp < MAX_CHILD_PAGES && childHasMore; cp++) {
                     let childUrl = `https://www.instagram.com/api/v1/media/${mediaId}/comments/${thread.commentPk}/child_comments/?`;
@@ -636,7 +638,7 @@ export class InstagramApiClient {
                     }
 
                     if (allComments.size >= targetCount) break;
-                    await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
+                    await new Promise((r) => setTimeout(r, 30 + Math.random() * 70));
                 }
             }
         }
@@ -679,7 +681,7 @@ export class InstagramApiClient {
 
             // Small delay between requests to avoid rate limiting
             if (i < userIds.length - 1) {
-                await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
+                await new Promise((r) => setTimeout(r, 30 + Math.random() * 70));
             }
         }
 

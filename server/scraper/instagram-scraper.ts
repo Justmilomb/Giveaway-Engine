@@ -244,7 +244,7 @@ export class InstagramScraper {
         capturedComments: Map<string, InstagramComment>,
         lastApiResponseTime: { value: number },
         maxScrolls: number = this.config.maxScrolls,
-        targetCommentCount: number = 2000
+        targetCommentCount: number = 100000
     ): Promise<void> {
         let noProgressCount = 0;
         let lastCommentCount = capturedComments.size;
@@ -522,7 +522,10 @@ export class InstagramScraper {
                     if (el.closest('button') || el.closest('time')) continue;
 
                     const elText = (el.textContent || '').trim();
-                    if (elText.length < 3) continue;
+                    if (elText.length === 0) continue;
+                    // Allow short text if it contains emoji, otherwise skip very short strings (UI artifacts)
+                    const hasEmoji = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u.test(elText);
+                    if (elText.length < 3 && !hasEmoji) continue;
                     if (usernamePattern.test(elText)) continue;
                     if (timestampPattern.test(elText)) continue;
                     if (/^\d+\s*likes?$/i.test(elText)) continue;
@@ -774,9 +777,12 @@ export class InstagramScraper {
      * - Faster overall operation
      * - Better error handling
      */
-    async fetchComments(postUrl: string, targetCommentCount: number = 2000): Promise<FetchCommentsResult> {
-        log(`Starting comment scraper for: ${postUrl} (target: ${targetCommentCount})`, "scraper");
+    async fetchComments(postUrl: string, targetCommentCount: number = 100000): Promise<FetchCommentsResult> {
+        // Hard 3-minute deadline for the entire scrape operation
+        const HARD_DEADLINE_MS = 180_000; // 3 minutes
+        log(`Starting comment scraper for: ${postUrl} (target: ${targetCommentCount}, deadline: ${HARD_DEADLINE_MS / 1000}s)`, "scraper");
         const startTime = Date.now();
+        const hardDeadline = startTime + HARD_DEADLINE_MS;
 
         try {
             // Launch browser
@@ -890,28 +896,29 @@ export class InstagramScraper {
                 log(`Phase 1 direct API failed: ${err instanceof Error ? err.message : err}`, "scraper");
             }
 
-            // Skip scroll+DOM when direct API returned results (scroll/DOM adds near-zero in practice)
-            const skipScroll = directApiCount > 0;
+            // Only skip scroll/DOM if we already have enough comments or time is up
+            const timeRemaining = hardDeadline - Date.now();
+            const skipScroll = capturedComments.size >= targetCommentCount || timeRemaining < 10_000;
             if (skipScroll) {
-                log(`Skipping scroll/DOM phase — direct API got ${capturedComments.size} comments`, "scraper");
+                log(`Skipping scroll/DOM phase — have ${capturedComments.size} comments, ${Math.round(timeRemaining / 1000)}s remaining`, "scraper");
             }
 
             let domComments: InstagramComment[] = [];
-            if (!skipScroll) {
+            if (!skipScroll && Date.now() < hardDeadline) {
                 // ── Phase 2: Scroll + network interception fallback ───────
                 // Initial button clicking
                 log("Looking for 'View all comments' buttons...", "scraper");
                 await this.clickLoadMoreButtons(page);
-                await this.randomDelay(1000, 1500);
+                await this.randomDelay(500, 1000);
                 await this.clickLoadMoreButtons(page);
 
                 log("Phase 2: Scrolling to capture API responses...", "scraper");
                 await this.scrollCommentsSection(page, capturedComments, lastApiResponseTime, this.config.maxScrolls, targetCommentCount);
 
-                // ── Phase 3: DOM extraction if still short ────────────────
-                if (capturedComments.size < targetCommentCount) {
+                // ── Phase 3: DOM extraction if still short and time remains ──
+                if (capturedComments.size < targetCommentCount && Date.now() < hardDeadline) {
                     log("Phase 3: Extracting comments from DOM...", "scraper");
-                    await this.randomDelay(1000, 1500);
+                    await this.randomDelay(500, 1000);
                     domComments = await this.extractComments(page);
                     log(`DOM extracted ${domComments.length} comments`, "scraper");
                 }
