@@ -1,95 +1,226 @@
-# PickUsAWinner Engine
+# Giveaway Engine (PickUsAWinner)
 
-Live on Render.
-Version: 1.0.2
+**A free, simple Instagram giveaway tool designed for creators who don't want to pay subscriptions or hand over their data.**
+
+[Live Demo](https://pickusawinner.com) | [GitHub](https://github.com/Justmilomb/Giveaway-Engine)
+
+---
+
+## Project Story
+
+My mum runs Instagram giveaways to grow her following, but she was frustrated. Every giveaway platform wanted monthly subscriptions, required sign-ups (meaning sharing personal info), and kept forgetting to cancel. She asked me to build something simpler.
+
+**So I built Giveaway Engine** — a one-time payment, zero personal info, zero subscriptions approach. Just visit the site, pay once per giveaway, and run it. No accounts. No tracking. No subscriptions to forget.
+
+This was my first real AI-coded website, built with **Cursor**, **AntiGravity**, **Claude Code**, and **Codex**. I learned how to prompt properly and discovered that different AI tools excel at different tasks — small, focused work vs. larger architectural chunks. The workflow was efficient, and the result is a tool I'm proud to have built with my mum's feedback driving the UX.
+
+---
+
+## What It Does
+
+1. **Paste an Instagram post URL** → Scrape all public comments
+2. **Set filters** → Filter by followers, engagement, keyword mentions, custom rules
+3. **Pick winners** → Select random winners from filtered comments
+4. **Get results** → Download winner list, optionally auto-email them
+5. **Schedule giveaways** → Set a time and let the system handle it
+
+**One-time payment per giveaway.** No subscriptions. No personal info required.
+
+---
+
+## Tech Stack
+
+A full-stack TypeScript application built for reliability and real-world use:
+
+- **Frontend:** React 19, Vite 7, TailwindCSS 4, shadcn/ui (Radix), Wouter (routing), React Query, React Hook Form + Zod
+- **Backend:** Express 5, Passport.js (optional auth), express-session, express-rate-limit
+- **Database:** PostgreSQL 16, Drizzle ORM (optional; in-memory with JSON fallback available)
+- **Scraping:** Puppeteer + puppeteer-extra-plugin-stealth for reliable comment fetching
+- **Payments:** Stripe (PaymentIntent API + Stripe Elements)
+- **Email:** Nodemailer (SMTP) for winner notifications
+- **Build:** Vite (client), esbuild (server), tsx (dev runner)
+
+---
 
 ## Quick Start
 
 ```bash
 npm install
 npm run dev                    # Start backend + frontend dev server
-npm run scraper:worker        # Start local Instagram scraper worker (separate terminal)
 npm run build                 # Production build
 npm run start                 # Run production build
+
+# Optional: Local Instagram scraper (if running custom scraper)
+npm run test-scraper          # Test the Instagram scraper
+npm run instagram:login       # Manual Instagram login for testing
 ```
 
-## Project Structure
+**Development:** Start `npm run dev`, then open `http://localhost:5000`
+**Type checking:** `npm run check` (TypeScript strict mode)
+
+## Repository Structure
+
+The codebase is organized for clarity and maintainability:
 
 ```
-├── client/                    # React frontend application
-│   ├── src/
-│   │   ├── pages/            # Route components (home, tool, analytics, etc.)
-│   │   ├── components/       # Reusable UI components (ui/ has shadcn)
-│   │   ├── hooks/            # Custom React hooks (auth, toast, etc.)
-│   │   ├── lib/              # Utilities (stripe, queryClient, etc.)
-│   │   └── assets/           # Images and static assets
-│   └── public/               # Static files served as-is
-│
-├── server/                    # Express backend application
-│   ├── index.ts              # Server entry point
-│   ├── routes.ts             # All API endpoints
-│   ├── instagram.ts          # Instagram scraping logic
-│   ├── auth.ts               # Passport authentication
-│   ├── security.ts           # Rate limiting, IP blocking, credits
-│   ├── scheduler.ts          # Background job processor
-│   ├── storage.ts            # In-memory + JSON persistence
-│   ├── email.ts              # Email configuration
-│   ├── email-templates.ts    # HTML email templates
-│   ├── image.ts              # Image processing (sharp)
-│   ├── log.ts                # Logging utility
-│   ├── scraper/              # Instagram scraper module
-│   │   ├── instagram-scraper.ts        # Main Puppeteer scraper
-│   │   ├── session-manager.ts          # Login automation
-│   │   ├── proxy-manager.ts            # Proxy rotation
-│   │   ├── instagram-api-client.ts     # API utilities
-│   │   ├── test-scraper.ts             # Manual testing
-│   │   └── README.md                   # Scraper documentation
-│   └── scraper-relay.ts      # WebSocket relay for local workers
-│
-├── shared/                    # Code shared between client and server
-│   └── schema.ts             # Database schema + Zod validation
-│
-├── script/                    # Build and utility scripts
-│   ├── build.ts              # Production build orchestration
-│   ├── manual-login.ts       # Instagram login automation
-│   └── debug-api.ts          # API endpoint testing
-│
-├── migrations/               # Drizzle database migrations
-├── CLAUDE.md                 # Architecture documentation
-├── package.json              # Dependencies and scripts
-└── tsconfig.json             # TypeScript configuration
+client/src/
+├── pages/              # Route pages (tool, home, analytics, schedule, auth)
+├── components/         # Reusable UI (ui/ contains shadcn components)
+├── hooks/              # Custom hooks (use-user, use-toast, use-mobile)
+├── lib/                # Utilities (stripe, queryClient, protected-route)
+├── App.tsx             # Root component with Wouter routes
+└── main.tsx            # React entry point
+
+server/
+├── index.ts            # Express setup, HTTP server, scheduler
+├── routes.ts           # All API endpoints (~400 lines)
+├── auth.ts             # Passport.js local strategy, session config
+├── security.ts         # Rate limiters, credit system, IP blocking
+├── instagram.ts        # Instagram scraper dispatch
+├── scheduler.ts        # Background job processor (polls every 60s)
+├── storage.ts          # In-memory + JSON file persistence
+├── email.ts            # Nodemailer SMTP config
+├── email-templates.ts  # HTML/text email templates
+├── image.ts            # Image processing (sharp)
+├── log.ts              # Logging utility
+├── vite.ts             # Vite dev middleware setup
+├── static.ts           # Production static file serving
+└── scraper/
+    ├── instagram-scraper.ts      # Main Puppeteer scraper
+    ├── session-manager.ts        # Login automation & cookie persistence
+    ├── proxy-manager.ts          # Proxy rotation
+    ├── instagram-api-client.ts   # Instagram API utilities
+    └── test-scraper.ts           # Manual scraper testing
+
+shared/
+└── schema.ts           # Drizzle ORM schema + Zod validation schemas
+
+script/
+├── build.ts            # Production build orchestration
+├── manual-login.ts     # Instagram login automation
+└── debug-api.ts        # API endpoint debugging
+
+migrations/             # Drizzle-kit database migrations
+CLAUDE.md               # Architecture deep-dive documentation
 ```
 
-## Code Maintenance Standards
+## Key Features
 
-### Folder Organization
+### Authentication & Sessions
+- **Passport.js** local strategy with optional user accounts
+- Guest mode (no sign-up required) for casual users
+- Sessions stored in memory or PostgreSQL (if `DATABASE_URL` set)
+
+### Credit System
+- **2 free credits** per IP address
+- **Paid credits** via Stripe one-time payment
+- Credits consumed per comment fetch
+- Returns HTTP 402 when credits exhausted
+
+### Instagram Scraping
+- **Strategy 1:** Custom Puppeteer scraper with network interception
+- **Strategy 2:** WebSocket relay to local worker (for parallel processing)
+- **Strategy 3:** DOM fallback if API fails
+- Handles login, session management, and proxy rotation
+
+### Scheduled Giveaways
+- Queue giveaways for future execution
+- Background scheduler polls every 60 seconds
+- Automatic winner selection and email notification (if SMTP configured)
+- Results accessible via public access token
+
+### Email Notifications
+- Sent via Nodemailer (SMTP)
+- HTML + plain text templates
+- For scheduled giveaway results and optional winner notifications
+- Easy setup with Gmail or iCloud app passwords (see [Email Setup](#email-setup-icloudgmail))
+
+---
+
+## API Routes
+
+All endpoints under `/api` with middleware chain:
+1. Global rate limiting
+2. IP block checking
+3. Request validation (Zod)
+4. Route-specific handlers
+
+| Endpoint | Method | Auth | Purpose |
+|---|---|---|---|
+| `/api/register` | POST | No | Create user account |
+| `/api/login` | POST | No | Authenticate (Passport local) |
+| `/api/logout` | POST | Yes | End session |
+| `/api/user` | GET | Yes | Get current user |
+| `/api/credits` | GET | No | Check remaining credits (IP-based) |
+| `/api/credits/redeem` | POST | No | Redeem payment token |
+| `/api/config` | GET | No | Stripe publishable key for frontend |
+| `/api/payment/create-intent` | POST | No | Create Stripe PaymentIntent |
+| `/api/payment/confirm` | POST | No | Verify payment, issue purchase token |
+| `/api/instagram/validate` | POST | No | Validate Instagram post URL |
+| `/api/instagram/comments` | POST | No | Fetch comments (consumes credit) |
+| `/api/giveaways` | POST | Yes | Create/schedule a giveaway |
+| `/api/giveaways` | GET | Yes | List user's giveaways |
+| `/api/giveaways/:token` | GET | No | Get giveaway by public token |
+| `/api/giveaways/:id` | PUT | Yes | Update a giveaway |
+| `/api/giveaways/:id` | DELETE | Yes | Delete a giveaway |
+| `/api/analytics` | GET | Admin | View stats |
+| `/api/admin/generate-token` | POST | Admin | Generate payment token |
+| `/api/admin/security` | GET | Admin | View security stats |
+
+Response format: `{ message: string, data?: unknown }` or `{ error: string }`
+
+---
+
+## Architecture & Design
+
+### Client Routes (Wouter)
+- `/` — Home/landing page
+- `/tool` — Main giveaway tool UI
+- `/analytics` — Statistics dashboard
+- `/schedule/:token` — Scheduled giveaway detail
+- `/login`, `/register` — Authentication pages
+- `/privacy`, `/terms`, `/coming-soon` — Static pages
+
+### Frontend Architecture
+- **State:** React Context for auth (`use-user`), React Query for server state
+- **Components:** shadcn/ui (New York style) + Lucide icons
+- **Forms:** React Hook Form + Zod for validation
+- **Styling:** TailwindCSS utilities (no CSS modules)
+
+### Backend Architecture
+- **Framework:** Express 5 with custom middleware chain
+- **Storage:** MemStorage (in-memory Map) with JSON persistence, or PostgreSQL
+- **Scheduler:** Polls for pending giveaways every 60s
+- **Error handling:** Global middleware catches unhandled errors, returns JSON
+
+### Code Maintenance Standards
+
+#### Folder Organization
 
 Each folder contains specific, related code:
 - **client/src/pages/** — One file per route (tool.tsx, home.tsx, etc.)
-- **client/src/components/** — Reusable UI components, organized by purpose
-- **client/src/lib/** — Utilities, helpers, and configuration
-- **server/** — All backend logic at root level or in focused subfolders
-- **server/scraper/** — Only Instagram scraping logic; don't add other features here
+- **client/src/components/** — Reusable UI components
+- **client/src/lib/** — Utilities, helpers, configuration
+- **server/** — Backend logic at root or in focused subfolders
+- **server/scraper/** — Only Instagram scraping logic (don't mix with other features)
 - **shared/** — Only code used by both client and server
 
-### File Naming
+#### File Naming
 
-- **Pages/Components:** PascalCase, `.tsx` extension (e.g., `GiveawayTool.tsx`)
-- **Utilities:** camelCase, `.ts` extension (e.g., `stripe.ts`)
-- **Types/Schemas:** Define in the same file or in `schema.ts` if shared
+- **Pages/Components:** PascalCase, `.tsx` (e.g., `GiveawayTool.tsx`)
+- **Utilities:** camelCase, `.ts` (e.g., `stripe.ts`)
+- **Schemas/Types:** Define in same file or `shared/schema.ts` if shared
 - **Tests:** Suffix with `.test.ts` or `.spec.ts`
 
-### Code Style
+#### Code Style
 
 - **TypeScript:** Strict mode enabled. No `any` unless unavoidable.
-- **Imports:** Use path aliases (`@/`, `@shared/`) in client code; relative imports in server
-- **Functions:** Export named functions for tree-shaking; prefer small, focused functions
-- **Comments:** Add comments only when logic is non-obvious. Avoid redundant comments.
-- **Formatting:** 2-space indentation, semicolons required, no trailing commas in function args
+- **Imports:** Use path aliases (`@/`, `@shared/`) in client; relative imports in server
+- **Functions:** Named exports for tree-shaking; small, focused functions
+- **Comments:** Only when logic is non-obvious; avoid redundant comments
+- **Formatting:** 2-space indentation, semicolons required
 
-### Component Structure
-
-React components follow this pattern:
+#### Component Example
 
 ```tsx
 import { useState } from "react";
@@ -110,165 +241,236 @@ export default function MyComponent({ onSubmit }: Props) {
 }
 ```
 
-### API Routes
+#### API Route Pattern
 
-All endpoints under `/api` with global middleware:
-1. Rate limiting
-2. IP block checking
-3. Request validation
-4. Route-specific logic
-
-Return JSON responses with `message` or `error` fields. Use HTTP status codes correctly:
+Routes return JSON with `message` or `error` fields. HTTP status codes:
 - `200`: Success
-- `402`: Payment required (credits exhausted)
-- `400`: Bad request
-- `401`: Unauthorized
+- `201`: Created
+- `400`: Bad request (validation failed)
+- `401`: Unauthorized (auth required)
+- `402`: Payment required (no credits)
 - `404`: Not found
 - `500`: Server error
 
-### Error Handling
-
-- **Client:** Use `useToast()` hook to show errors
-- **Server:** Throw or pass errors to middleware; global handler returns JSON
+Error handling:
+- **Client:** Use `useToast()` hook to display errors
+- **Server:** Throw errors to middleware; global handler returns JSON
 - **Database:** Catch transaction errors; don't let constraints fail silently
 
-## Key Features
+---
 
-### Authentication
+## Email Setup (iCloud/Gmail)
 
-- **Passport.js** local strategy with session storage
-- Users can register with email/password or use guest mode
-- Sessions stored in memory (or PostgreSQL if `DATABASE_URL` set)
+Enable winner notifications by configuring SMTP. No SMTP = giveaways still work, just no emails sent.
 
-### Credit System
+### Steps
 
-- **2 free credits** per IP address per day
-- **Payment tokens** unlock additional fetches
-- In-memory tracking; resets if server restarts
+1. **Create an app password** with your email provider:
+   - **iCloud:** appleid.apple.com → Sign-In and Security → App-Specific Passwords
+   - **Gmail:** myaccount.google.com → Security → 2-Step Verification → App passwords
 
-### Instagram Scraping
+2. **Set environment variables** in `.env`:
+   ```
+   SMTP_HOST=smtp.icloud.com          # or smtp.gmail.com
+   SMTP_PORT=587                       # or 465
+   SMTP_SECURE=false                   # true if port 465
+   SMTP_USER=your-email@icloud.com
+   SMTP_PASS=your-app-password         # (not your regular password)
+   SMTP_FROM=your-email@icloud.com     # Usually same as SMTP_USER
+   SMTP_FROM_NAME=PickUsAWinner        # Display name
+   SMTP_REPLY_TO=support@yoursite.com  # Optional reply-to
+   ```
 
-1. **Strategy 1:** WebSocket relay to local worker (highest priority)
-2. **Strategy 2:** Custom Puppeteer scraper with credentials
-3. Error if neither available
+3. **Test SMTP connectivity** (no email sent):
+   ```bash
+   curl -X GET http://localhost:5000/api/admin/email/health \
+     -H "x-admin-key: YOUR_ADMIN_API_KEY"
+   ```
+   Success response: `{ "configured": true, "verified": true }`
 
-### Scheduled Giveaways
-
-- Giveaways are queued to the connected scraper worker immediately on schedule create/update
-- Worker persists queue locally in `SCRAPER_JOBS_FILE` (default `worker-jobs.json`)
-- Worker prepares winners 3 minutes before scheduled time, finalizes at scheduled time, then posts result back
-- Server marks giveaway completed and sends result email (if SMTP configured)
-
-### Email
-
-- Sent via Nodemailer SMTP
-- Templates in `email-templates.ts` (HTML + plain text)
-- Used for scheduled giveaway results
-- SMTP health endpoint: `GET /api/admin/email/health` (requires `x-admin-key`)
-
-### Email Setup (iCloud/Gmail)
-
-1. Create an app password with your provider:
-- iCloud: appleid.apple.com -> Sign-In and Security -> App-Specific Passwords
-- Gmail: myaccount.google.com -> Security -> 2-Step Verification -> App passwords
-2. Set these env vars in `.env`:
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_SECURE`
-- `SMTP_USER`
-- `SMTP_PASS` (app password)
-- `SMTP_FROM` (set this equal to `SMTP_USER` unless you know your SMTP alias is allowed)
-- `SMTP_FROM_NAME` (display name, e.g. `PickUsAWinner Support`)
-- `SMTP_REPLY_TO` (default reply destination, e.g. `support@pickusawinner.com`)
-3. Test SMTP connectivity (no email is sent):
-
-```powershell
-Invoke-RestMethod -Method GET `
-  -Uri "http://localhost:5000/api/admin/email/health" `
-  -Headers @{ "x-admin-key" = "<your ADMIN_API_KEY>" }
-```
-
-Expected success is `configured: true` and `verified: true`.
+---
 
 ## Environment Variables
 
-Create a `.env` file (see `.env.example`):
+Create a `.env` file at the project root (see `.env.example`):
+
+### Required (Production)
 
 ```
-DATABASE_URL=postgresql://...          # PostgreSQL (optional)
-INSTAGRAM_USERNAME=...                 # For Puppeteer scraper
-INSTAGRAM_PASSWORD=...                 # For Puppeteer scraper
-SCRAPER_RELAY_SECRET=...               # Shared secret for worker relay
-SCRAPER_RESULT_SECRET=...              # Optional callback auth secret (defaults to relay secret)
-SCRAPER_JOBS_FILE=worker-jobs.json     # Worker-local persistent schedule queue file
-SMTP_HOST=...                          # Email SMTP
-SMTP_PORT=...
-SMTP_SECURE=false
-SMTP_USER=...
-SMTP_PASS=...
-SMTP_FROM=...
-SMTP_FROM_NAME=...
-SMTP_REPLY_TO=...
-ADMIN_API_KEY=...                      # Admin endpoints
-STRIPE_SECRET_KEY=...                  # Payments
-STRIPE_PUBLISHABLE_KEY=...
-PORT=5000                              # Server port
-DATA_FILE=/var/data/db.json            # Use a persistent disk path in production
+STRIPE_SECRET_KEY=sk_...               # Stripe secret key
+STRIPE_PUBLISHABLE_KEY=pk_...          # Stripe public key
+ADMIN_API_KEY=your-secret-key          # For admin endpoints
+SESSION_SECRET=random-string           # For session encryption
 ```
+
+### Optional (Features)
+
+```
+DATABASE_URL=postgresql://user:pass... # PostgreSQL (default: in-memory)
+INSTAGRAM_USERNAME=...                 # For Instagram scraper
+INSTAGRAM_PASSWORD=...                 # For Instagram scraper
+SCRAPER_RELAY_SECRET=...               # WebSocket relay authentication
+SCRAPER_RESULT_SECRET=...              # Callback authentication (defaults to relay secret)
+SCRAPER_JOBS_FILE=worker-jobs.json     # Worker schedule queue file path
+```
+
+### Email (Optional)
+
+```
+SMTP_HOST=smtp.icloud.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@icloud.com
+SMTP_PASS=your-app-password
+SMTP_FROM=your-email@icloud.com
+SMTP_FROM_NAME=PickUsAWinner
+SMTP_REPLY_TO=support@yoursite.com
+```
+
+### Server/Storage
+
+```
+PORT=5000                              # Server port (default: 5000)
+DATA_FILE=/var/data/db.json            # JSON persistence path (default: db.json)
+NODE_ENV=production                    # Set in production
+BASE_URL=https://pickusawinner.com     # For email links (auto-detected if not set)
+```
+
+---
 
 ## Database
 
-Using **Drizzle ORM** with PostgreSQL (optional). If `DATABASE_URL` is set, runtime storage uses PostgreSQL (recommended for persistence on ephemeral hosts). Schema in `shared/schema.ts`:
-- **users** — id, firstName, username, email, password, createdAt
-- **giveaways** — id, userId, scheduledFor, status, config, winners, accessToken, createdAt
+### Optional PostgreSQL
 
-Run migrations: `npm run db:push`
+By default, Giveaway Engine uses **in-memory storage** with JSON file persistence (in `db.json`). For production or ephemeral hosting:
 
-## Testing
+1. Set `DATABASE_URL` in `.env`
+2. Run migrations: `npm run db:push`
 
-No automated test framework. Manual testing:
-- `npm run test-scraper` — Test Instagram scraper
-- `npm run check` — TypeScript type checking
+**Drizzle ORM** schema (`shared/schema.ts`):
+- **users** — id (UUID), firstName, username (optional, unique), email (unique), password, createdAt
+- **giveaways** — id (UUID), userId (FK), scheduledFor, status (pending/completed/failed), config (JSONB), winners (JSONB), accessToken (unique), createdAt
+
+### Without PostgreSQL
+
+In-memory storage (Map) persists to `db.json`. Data is lost if server restarts unless you set `DATA_FILE` to a persistent volume.
+
+---
+
+## Testing & Type Checking
+
+No automated test framework. Use these for manual testing:
+
+```bash
+npm run check              # TypeScript type checking (strict mode)
+npm run test-scraper      # Test Instagram scraper
+npm run instagram:login   # Manual Instagram login
+npm run debug-api         # Test API endpoints
+```
+
+For browser testing: `npm run dev` and visit `http://localhost:5000`
+
+---
 
 ## Deployment
 
-Build: `npm run build` → outputs to `dist/`
-- Client: `dist/public/` (served by Express)
-- Server: `dist/index.cjs` (CommonJS bundle)
+### Build & Production
 
-Docker available; set `NODE_ENV=production` and ensure `.env` is configured.
+```bash
+npm run build     # Outputs to dist/
+npm run start     # Run production build (dist/index.cjs)
+```
 
-## SEO (Bing/Edge)
+**Build outputs:**
+- **Client:** `dist/public/` (served by Express)
+- **Server:** `dist/index.cjs` (CommonJS, minified, dependencies bundled)
 
-For better visibility on Bing and Microsoft Edge search:
+### Environment
+
+```bash
+NODE_ENV=production    # Critical for production
+PORT=5000              # Server port
+DATABASE_URL=...       # Use PostgreSQL for persistence
+DATA_FILE=/var/data/db.json  # Persistent storage path
+```
+
+### Docker
+
+A `Dockerfile` is included (Node.js 20 Alpine, runs as non-root). Ensure:
+- `.env` is configured with required variables
+- `dist/` folder is pre-built
+- Volume mounted for persistent data
+
+### Hosting
+
+Deployed on Render; works anywhere Node.js runs (Vercel, Fly.io, Docker, VPS, etc.).
+
+---
+
+## Search Engine Optimization
+
+### Bing/Microsoft Edge
+
 1. Submit your sitemap at [Bing Webmaster Tools](https://www.bing.com/webmasters)
 2. Sitemap URL: `https://pickusawinner.com/sitemap.xml`
-3. Verify your domain and monitor indexing status
+3. Verify domain and monitor indexing
 
-## Common Tasks
+---
+
+## Common Development Tasks
 
 ### Add a new API endpoint
 
-1. Define route in `server/routes/<feature>.ts`
+1. Define route in `server/routes.ts` (or break into `server/routes/feature.ts`)
 2. Add validation schema (Zod) in `shared/schema.ts` if needed
-3. Implement handler logic
-4. Return JSON with `message` or `error`
+3. Implement handler with proper error handling
+4. Return JSON: `{ message: "...", data: ... }` or `{ error: "..." }`
 
-### Add a new page
+Example:
+```typescript
+app.post("/api/my-endpoint", validate(mySchema), async (req, res) => {
+  const result = await doSomething(req.body);
+  res.json({ message: "Success", data: result });
+});
+```
+
+### Add a new frontend page
 
 1. Create component in `client/src/pages/YourPage.tsx`
-2. Add route in `client/src/App.tsx`
-3. Import and use in root layout
+2. Add route in `client/src/App.tsx` using Wouter
+3. Import and render in root layout
 
-### Modify the scraper
+### Modify the Instagram scraper
 
 1. Edit `server/scraper/instagram-scraper.ts`
-2. Test with `npm run test-scraper`
-3. Check logs in `server/log.ts` for debugging
+2. Test: `npm run test-scraper`
+3. Check logs: `server/log.ts` has the `log()` utility
+4. Server runs at `http://localhost:5000`
 
 ### Debug an issue
 
-1. Check `server/log.ts` output
-2. Add `log()` calls in problematic code
-3. Use `npm run dev` to see server logs in real-time
-4. Check browser console (`F12`) for client errors
+1. **Server logs:** Check real-time output from `npm run dev`
+2. **Add logging:** Use `log()` from `server/log.ts`
+3. **Browser console:** Press `F12` in your browser for client errors
+4. **Network tab:** Check API requests/responses
+5. **Database:** Query directly if using PostgreSQL
+
+---
+
+## Resources
+
+- **[CLAUDE.md](./CLAUDE.md)** — Detailed architecture and conventions
+- **[Stripe Documentation](https://stripe.com/docs)** — Payment integration reference
+- **[Drizzle ORM](https://orm.drizzle.team)** — Database schema and migrations
+- **[React Query](https://tanstack.com/query)** — Server state management
+- **[TailwindCSS](https://tailwindcss.com)** — Styling reference
+- **[shadcn/ui](https://ui.shadcn.com)** — Component library
+
+---
+
+## License & Credits
+
+Built with **Cursor**, **AntiGravity**, **Claude Code**, and **Codex**. Open source and free to use.
+
+**Version:** 1.0.2
+**Live:** [pickusawinner.com](https://pickusawinner.com)
