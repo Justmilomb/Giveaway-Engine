@@ -21,6 +21,13 @@ export class InstagramScraper {
     private static readonly BROWSER_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
     private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
+    // Concurrency control: serialize scrape operations to prevent race conditions
+    // on login state, shared session cookies, and Instagram rate limits.
+    // Concurrent requests queue up and run one at a time.
+    private operationQueue: Promise<any> = Promise.resolve();
+    private queueDepth: number = 0;
+    private static readonly MAX_QUEUE_DEPTH = 10;
+
     // Configuration
     private config = {
         // Development mode: use headless but with faster settings
@@ -122,6 +129,30 @@ export class InstagramScraper {
         });
 
         return page;
+    }
+
+    /**
+     * Enqueue an async operation so only one runs at a time.
+     * Concurrent callers wait in line. Rejects immediately if the queue is full.
+     */
+    private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+        if (this.queueDepth >= InstagramScraper.MAX_QUEUE_DEPTH) {
+            return Promise.reject(new Error(
+                `Scraper queue full (${this.queueDepth} pending). Try again later.`
+            ));
+        }
+
+        this.queueDepth++;
+        const result = this.operationQueue.then(
+            () => operation(),
+            () => operation(), // run even if previous operation failed
+        ).finally(() => {
+            this.queueDepth--;
+        });
+
+        // Update the chain so next enqueue waits for this one
+        this.operationQueue = result.catch(() => {}); // swallow errors in the chain
+        return result;
     }
 
     /**
@@ -877,9 +908,13 @@ export class InstagramScraper {
      * - Better error handling
      */
     async fetchComments(postUrl: string, targetCommentCount: number = 100000): Promise<FetchCommentsResult> {
+        return this.enqueue(() => this._fetchComments(postUrl, targetCommentCount));
+    }
+
+    private async _fetchComments(postUrl: string, targetCommentCount: number): Promise<FetchCommentsResult> {
         // Hard 3-minute deadline for the entire scrape operation
         const HARD_DEADLINE_MS = 180_000; // 3 minutes
-        log(`Starting comment scraper for: ${postUrl} (target: ${targetCommentCount}, deadline: ${HARD_DEADLINE_MS / 1000}s)`, "scraper");
+        log(`Starting comment scraper for: ${postUrl} (target: ${targetCommentCount}, deadline: ${HARD_DEADLINE_MS / 1000}s, queued: ${this.queueDepth})`, "scraper");
         const startTime = Date.now();
         const hardDeadline = startTime + HARD_DEADLINE_MS;
 
@@ -1064,7 +1099,11 @@ export class InstagramScraper {
      * Reuses persistent browser instance.
      */
     async checkFollowers(userIds: string[]): Promise<Record<string, boolean>> {
-        log(`Starting follower check for ${userIds.length} users`, "scraper");
+        return this.enqueue(() => this._checkFollowers(userIds));
+    }
+
+    private async _checkFollowers(userIds: string[]): Promise<Record<string, boolean>> {
+        log(`Starting follower check for ${userIds.length} users (queued: ${this.queueDepth})`, "scraper");
         const page = await this.createPage();
 
         try {
