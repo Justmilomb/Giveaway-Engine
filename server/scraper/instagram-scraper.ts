@@ -15,6 +15,11 @@ export class InstagramScraper {
     private browser: Browser | null = null;
     private proxyManager: ProxyManager;
     private sessionManager: SessionManager;
+    private loggedIn: boolean = false;
+
+    // Idle timeout: close browser after 5 minutes of inactivity to free RAM
+    private static readonly BROWSER_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+    private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Configuration
     private config = {
@@ -25,11 +30,11 @@ export class InstagramScraper {
         scrollDelayNormal: parseInt(process.env.SCRAPER_SCROLL_DELAY_NORMAL || "600"),
         scrollDelayStuck: parseInt(process.env.SCRAPER_SCROLL_DELAY_STUCK || "1500"),
         scrollDelayBottom: parseInt(process.env.SCRAPER_SCROLL_DELAY_BOTTOM || "2000"),
-        
+
         // Scroll limits
         maxScrolls: parseInt(process.env.SCRAPER_MAX_SCROLLS || "500"),
         maxNoProgress: parseInt(process.env.SCRAPER_MAX_NO_PROGRESS || "15"),
-        
+
         // Enable parallel processing
         enableParallel: process.env.SCRAPER_ENABLE_PARALLEL !== "false",
         parallelExtractionDelay: parseInt(process.env.SCRAPER_PARALLEL_DELAY || "50"),
@@ -38,6 +43,100 @@ export class InstagramScraper {
     constructor() {
         this.proxyManager = new ProxyManager();
         this.sessionManager = new SessionManager();
+    }
+
+    /**
+     * Reset the idle timer. Called when a scrape starts/ends.
+     * After BROWSER_IDLE_TIMEOUT_MS of inactivity, the browser is closed to free RAM.
+     */
+    private resetIdleTimer(): void {
+        if (this.idleTimer) clearTimeout(this.idleTimer);
+        this.idleTimer = setTimeout(async () => {
+            if (this.browser) {
+                log(`Browser idle for ${InstagramScraper.BROWSER_IDLE_TIMEOUT_MS / 1000}s — closing to free resources`, "scraper");
+                await this.closeBrowser();
+            }
+        }, InstagramScraper.BROWSER_IDLE_TIMEOUT_MS);
+    }
+
+    /**
+     * Check if the persistent browser is still alive and connected.
+     */
+    private isBrowserAlive(): boolean {
+        if (!this.browser) return false;
+        try {
+            return this.browser.connected;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Get or create a persistent browser instance.
+     * Reuses the existing browser if it's still alive, otherwise launches a new one.
+     * Saves ~2-3 seconds per scrape by avoiding repeated browser startups.
+     */
+    private async getOrCreateBrowser(): Promise<Browser> {
+        if (this.isBrowserAlive()) {
+            log("Reusing existing browser instance (warm start)", "scraper");
+            this.resetIdleTimer();
+            return this.browser!;
+        }
+
+        // Browser is dead or doesn't exist — launch a new one
+        if (this.browser) {
+            // Clean up dead browser reference
+            try { await this.browser.close(); } catch { /* already dead */ }
+            this.browser = null;
+            this.loggedIn = false;
+        }
+
+        log("Launching new browser instance (cold start)...", "scraper");
+        this.browser = await this.launchBrowser();
+        this.loggedIn = false;
+        this.resetIdleTimer();
+        return this.browser;
+    }
+
+    /**
+     * Create a new page with standard configuration (user agent, request interception).
+     */
+    private async createPage(): Promise<Page> {
+        const browser = await this.getOrCreateBrowser();
+        const page = await browser.newPage();
+
+        await page.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        );
+
+        // Block images/fonts/media for speed
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            if (req.resourceType() === 'image' ||
+                req.resourceType() === 'font' ||
+                req.resourceType() === 'media') {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
+
+        return page;
+    }
+
+    /**
+     * Close the browser and clean up resources.
+     */
+    private async closeBrowser(): Promise<void> {
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = null;
+        }
+        if (this.browser) {
+            try { await this.browser.close(); } catch { /* ignore */ }
+            this.browser = null;
+            this.loggedIn = false;
+        }
     }
 
     /**
@@ -784,33 +883,21 @@ export class InstagramScraper {
         const startTime = Date.now();
         const hardDeadline = startTime + HARD_DEADLINE_MS;
 
+        // Create page from persistent browser (reuses existing browser if alive)
+        const page = await this.createPage();
+
         try {
-            // Launch browser
-            this.browser = await this.launchBrowser();
-            const page = await this.browser.newPage();
-
-            // Set user agent
-            await page.setUserAgent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            );
-
-            // Enable request interception for performance
-            await page.setRequestInterception(true);
-            page.on('request', (req) => {
-                // Block images and unnecessary resources for speed
-                if (req.resourceType() === 'image' || 
-                    req.resourceType() === 'font' || 
-                    req.resourceType() === 'media') {
-                    req.abort();
-                } else {
-                    req.continue();
+            // Ensure logged in (skips if already authenticated from previous scrape)
+            if (!this.loggedIn) {
+                const loggedIn = await this.ensureLoggedIn(page);
+                if (!loggedIn) {
+                    throw new Error("Failed to login to Instagram");
                 }
-            });
-
-            // Ensure logged in
-            const loggedIn = await this.ensureLoggedIn(page);
-            if (!loggedIn) {
-                throw new Error("Failed to login to Instagram");
+                this.loggedIn = true;
+            } else {
+                // Restore session cookies on the new page
+                await this.sessionManager.restoreSession(page);
+                log("Reusing existing login session (warm start)", "scraper");
             }
 
             // Set up network interception for API responses
@@ -959,29 +1046,28 @@ export class InstagramScraper {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log(`Scraping error: ${errorMessage}`, "scraper");
+            // If browser crashed, mark it dead so next call launches a fresh one
+            if (!this.isBrowserAlive()) {
+                this.browser = null;
+                this.loggedIn = false;
+            }
             throw error;
         } finally {
-            if (this.browser) {
-                await this.browser.close();
-                this.browser = null;
-            }
+            // Close the page, NOT the browser — keep it warm for next scrape
+            try { await page.close(); } catch { /* ignore */ }
+            this.resetIdleTimer();
         }
     }
 
     /**
      * Check if given user IDs follow the currently logged-in account.
-     * Spins up a browser, restores session, and checks via API.
+     * Reuses persistent browser instance.
      */
     async checkFollowers(userIds: string[]): Promise<Record<string, boolean>> {
         log(`Starting follower check for ${userIds.length} users`, "scraper");
+        const page = await this.createPage();
+
         try {
-            this.browser = await this.launchBrowser();
-            const page = await this.browser.newPage();
-
-            await page.setUserAgent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            );
-
             // Restore session cookies
             const restored = await this.sessionManager.restoreSession(page);
             if (!restored) {
@@ -995,8 +1081,6 @@ export class InstagramScraper {
             const apiClient = new InstagramApiClient();
             const resultMap = await apiClient.checkFollowStatus(page, userIds);
 
-            await page.close();
-
             const result: Record<string, boolean> = {};
             for (const [userId, follows] of resultMap) {
                 result[userId] = follows;
@@ -1005,22 +1089,21 @@ export class InstagramScraper {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log(`Follower check error: ${errorMessage}`, "scraper");
+            if (!this.isBrowserAlive()) {
+                this.browser = null;
+                this.loggedIn = false;
+            }
             throw error;
         } finally {
-            if (this.browser) {
-                await this.browser.close();
-                this.browser = null;
-            }
+            try { await page.close(); } catch { /* ignore */ }
+            this.resetIdleTimer();
         }
     }
 
     /**
-     * Cleanup resources
+     * Cleanup resources — closes browser and stops idle timer.
      */
     async close(): Promise<void> {
-        if (this.browser) {
-            await this.browser.close();
-            this.browser = null;
-        }
+        await this.closeBrowser();
     }
 }
