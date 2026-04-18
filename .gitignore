@@ -44,6 +44,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Secrets
+credentials.json
+
 # Temporary Files
 *.tmp
 *.temp
