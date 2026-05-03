@@ -33,7 +33,7 @@ This was my first real AI-coded website, built with **Cursor**, **AntiGravity**,
 A full-stack TypeScript application built for reliability and real-world use:
 
 - **Frontend:** React 19, Vite 7, TailwindCSS 4, shadcn/ui (Radix), Wouter (routing), React Query, React Hook Form + Zod
-- **Backend:** Express 5, Passport.js (optional auth), express-session, express-rate-limit
+- **Backend:** Express 5, Passport.js (local + Google OAuth20), cookie-session, express-rate-limit
 - **Database:** PostgreSQL 16, Drizzle ORM (optional; in-memory with JSON fallback available)
 - **Scraping:** Puppeteer + puppeteer-extra-plugin-stealth for reliable comment fetching
 - **Payments:** Stripe (PaymentIntent API + Stripe Elements)
@@ -46,13 +46,15 @@ A full-stack TypeScript application built for reliability and real-world use:
 
 ```bash
 npm install
-npm run dev                    # Start backend + frontend dev server
-npm run build                 # Production build
-npm run start                 # Run production build
+npm run dev                    # Start backend + frontend dev server (port 5000)
+npm run build                  # Production build
+npm run start                  # Run production build
 
-# Optional: Local Instagram scraper (if running custom scraper)
-npm run test-scraper          # Test the Instagram scraper
-npm run instagram:login       # Manual Instagram login for testing
+# Scraper
+npm run test-scraper           # Test the Instagram scraper
+npm run instagram:login        # Manual Instagram login
+npm run scraper:worker         # Run local Puppeteer worker (connects to relay)
+npm run scraper:worker:pi      # Run local worker headless (Raspberry Pi)
 ```
 
 **Development:** Start `npm run dev`, then open `http://localhost:5000`
@@ -73,15 +75,27 @@ client/src/
 
 server/
 ├── index.ts            # Express setup, HTTP server, scheduler
-├── routes.ts           # All API endpoints (~400 lines)
-├── auth.ts             # Passport.js local strategy, session config
+├── routes.ts           # Route registration — mounts all route modules
+├── routes/             # Route modules split by feature
+│   ├── admin.ts        # Admin endpoints
+│   ├── ads.ts          # Ad serving endpoints
+│   ├── articles.ts     # Blog/article endpoints
+│   ├── giveaways.ts    # Giveaway CRUD
+│   ├── instagram.ts    # Comment fetching
+│   ├── payment.ts      # Stripe payments and credits
+│   └── public.ts       # Public/unauthenticated endpoints
+├── auth.ts             # Passport.js local + Google OAuth20, cookie-session config
 ├── security.ts         # Rate limiters, credit system, IP blocking
 ├── instagram.ts        # Instagram scraper dispatch
+├── scraper-relay.ts    # WebSocket relay (forwards jobs to local worker)
 ├── scheduler.ts        # Background job processor (polls every 60s)
 ├── storage.ts          # In-memory + JSON file persistence
 ├── email.ts            # Nodemailer SMTP config
 ├── email-templates.ts  # HTML/text email templates
 ├── image.ts            # Image processing (sharp)
+├── markdown.ts         # Markdown article parsing
+├── indexnow.ts         # Search engine submission (IndexNow/Bing)
+├── seo-routes.ts       # Per-route SEO metadata
 ├── log.ts              # Logging utility
 ├── vite.ts             # Vite dev middleware setup
 ├── static.ts           # Production static file serving
@@ -93,12 +107,17 @@ server/
     └── test-scraper.ts           # Manual scraper testing
 
 shared/
-└── schema.ts           # Drizzle ORM schema + Zod validation schemas
+└── schema.ts           # Drizzle ORM schema + Zod validation schemas (users, giveaways, ads)
 
 script/
 ├── build.ts            # Production build orchestration
 ├── manual-login.ts     # Instagram login automation
+├── local-worker.ts     # Local Puppeteer worker (connects to scraper relay)
+├── force-index.ts      # Force IndexNow submission for all routes
 └── debug-api.ts        # API endpoint debugging
+
+content/
+└── articles/           # Markdown blog articles
 
 migrations/             # Drizzle-kit database migrations
 CLAUDE.md               # Architecture deep-dive documentation
@@ -107,9 +126,10 @@ CLAUDE.md               # Architecture deep-dive documentation
 ## Key Features
 
 ### Authentication & Sessions
-- **Passport.js** local strategy with optional user accounts
-- Guest mode (no sign-up required) for casual users
-- Sessions stored in memory or PostgreSQL (if `DATABASE_URL` set)
+- **Passport.js** local strategy (email + password) and Google OAuth20
+- Guest mode (no sign-up required) for casual users — credits are IP-based
+- Sessions managed via signed `cookie-session` (no server-side session store required)
+- `password` field is nullable on users; Google OAuth users authenticate via `googleId`
 
 ### Credit System
 - **2 free credits** per IP address
@@ -174,12 +194,18 @@ Response format: `{ message: string, data?: unknown }` or `{ error: string }`
 ## Architecture & Design
 
 ### Client Routes (Wouter)
-- `/` — Home/landing page
-- `/tool` — Main giveaway tool UI
-- `/analytics` — Statistics dashboard
-- `/schedule/:token` — Scheduled giveaway detail
-- `/login`, `/register` — Authentication pages
-- `/privacy`, `/terms`, `/coming-soon` — Static pages
+- `/` — Redirects to `/giveaway-generator`
+- `/giveaway-generator` — Main landing page (Instagram giveaway runner)
+- `/tool` — Giveaway tool UI (fetch, filter, pick winners)
+- `/spin-the-wheel`, `/random-name-picker`, `/random-option-picker` — Additional picker tools
+- `/wheel`, `/picker` — Simplified wheel/picker pages
+- `/youtube`, `/tiktok`, `/facebook-picker`, `/twitter-picker` — Platform-specific pickers
+- `/how-it-works`, `/instagram-giveaway-guide` — Content/guide pages
+- `/analytics` — Statistics dashboard (admin)
+- `/schedule/:token` — Scheduled giveaway detail (public)
+- `/article/:slug` — Blog article pages (markdown-based)
+- `/faq`, `/contact`, `/press` — Support and informational pages
+- `/privacy`, `/terms`, `/coming-soon`, `/sitemap` — Static pages
 
 ### Frontend Architecture
 - **State:** React Context for auth (`use-user`), React Query for server state
@@ -300,18 +326,22 @@ Create a `.env` file at the project root (see `.env.example`):
 STRIPE_SECRET_KEY=sk_...               # Stripe secret key
 STRIPE_PUBLISHABLE_KEY=pk_...          # Stripe public key
 ADMIN_API_KEY=your-secret-key          # For admin endpoints
-SESSION_SECRET=random-string           # For session encryption
+SESSION_SECRET=random-string           # For cookie-session signing
 ```
 
 ### Optional (Features)
 
 ```
-DATABASE_URL=postgresql://user:pass... # PostgreSQL (default: in-memory)
+DATABASE_URL=postgresql://user:pass... # PostgreSQL (default: in-memory + db.json)
 INSTAGRAM_USERNAME=...                 # For Instagram scraper
 INSTAGRAM_PASSWORD=...                 # For Instagram scraper
 SCRAPER_RELAY_SECRET=...               # WebSocket relay authentication
 SCRAPER_RESULT_SECRET=...              # Callback authentication (defaults to relay secret)
 SCRAPER_JOBS_FILE=worker-jobs.json     # Worker schedule queue file path
+SCRAPER_HEADLESS=true                  # Run scraper worker headless (for Raspberry Pi)
+GOOGLE_CLIENT_ID=...                   # Google OAuth20 client ID
+GOOGLE_CLIENT_SECRET=...               # Google OAuth20 client secret
+ADMIN_ALERT_EMAIL=...                  # Email address for contact-form notifications
 ```
 
 ### Email (Optional)
@@ -348,8 +378,9 @@ By default, Giveaway Engine uses **in-memory storage** with JSON file persistenc
 2. Run migrations: `npm run db:push`
 
 **Drizzle ORM** schema (`shared/schema.ts`):
-- **users** — id (UUID), firstName, username (optional, unique), email (unique), password, createdAt
-- **giveaways** — id (UUID), userId (FK), scheduledFor, status (pending/completed/failed), config (JSONB), winners (JSONB), accessToken (unique), createdAt
+- **users** — id (varchar UUID), firstName, username (optional, unique), email (unique), password (nullable), googleId (nullable), createdAt
+- **giveaways** — id (varchar UUID), userId (FK), scheduledFor, status (pending/completed/failed), config (JSONB), winners (JSONB), accessToken (unique varchar), createdAt
+- **ads** — id (varchar UUID), imageUrl, linkUrl, active (boolean), clicks, impressions, createdAt
 
 ### Without PostgreSQL
 
@@ -363,9 +394,10 @@ No automated test framework. Use these for manual testing:
 
 ```bash
 npm run check              # TypeScript type checking (strict mode)
-npm run test-scraper      # Test Instagram scraper
-npm run instagram:login   # Manual Instagram login
-npm run debug-api         # Test API endpoints
+npm run test-scraper       # Test Instagram scraper
+npm run instagram:login    # Manual Instagram login
+tsx script/debug-api.ts    # Debug API endpoints
+tsx script/test-apify.ts   # Test Apify integration
 ```
 
 For browser testing: `npm run dev` and visit `http://localhost:5000`
@@ -421,9 +453,9 @@ Deployed on Render; works anywhere Node.js runs (Vercel, Fly.io, Docker, VPS, et
 
 ### Add a new API endpoint
 
-1. Define route in `server/routes.ts` (or break into `server/routes/feature.ts`)
-2. Add validation schema (Zod) in `shared/schema.ts` if needed
-3. Implement handler with proper error handling
+1. Add the handler to the relevant module in `server/routes/` (e.g. `giveaways.ts`, `admin.ts`). If no existing module fits, create a new one and register it in `server/routes.ts`.
+2. Add a validation schema (Zod) in `shared/schema.ts` if needed
+3. Implement the handler with proper error handling
 4. Return JSON: `{ message: "...", data: ... }` or `{ error: "..." }`
 
 Example:
