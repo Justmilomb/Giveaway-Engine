@@ -81,8 +81,9 @@ export function registerInstagramRoutes(app: Express, deps: InstagramRouteDeps):
           const usernameCount = usernameCounts.get(c.username) || 0;
 
           if (usernameCount > 1) fraudScore += usernameCount * 10;
-          if (c.text && c.text.length < 5) fraudScore += 5;
-          if (c.text && /^[\p{Emoji}\s]+$/u.test(c.text)) fraudScore += 3;
+          // Don't penalize short comments that contain emojis (e.g. "❤️", "😁🔥")
+          const hasEmoji = c.text && /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(c.text);
+          if (c.text && c.text.length < 5 && !hasEmoji) fraudScore += 5;
 
           return {
             id: c.id,
