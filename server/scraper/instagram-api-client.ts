@@ -31,8 +31,10 @@ export class InstagramApiClient {
         this.sessionCookies = cookies.map(c => `${c.name}=${c.value}`).join("; ");
         const csrf = cookies.find(c => c.name === "csrftoken");
         this.csrfToken = csrf?.value || "";
+        const sessionId = cookies.find(c => c.name === "sessionid");
         const ua = await page.evaluate(() => navigator.userAgent);
         this.userAgent = ua || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        log(`Session extracted: ${cookies.length} cookies, csrf=${this.csrfToken ? "yes" : "NO"}, sessionid=${sessionId ? "yes" : "NO"}`, "scraper");
     }
 
     /**
@@ -53,6 +55,10 @@ export class InstagramApiClient {
 
         const deadline = Date.now() + InstagramApiClient.API_TIME_BUDGET_MS;
         log(`Phase 1: Direct API extraction (shortcode=${shortcode}, budget=${InstagramApiClient.API_TIME_BUDGET_MS / 1000}s)`, "scraper");
+
+        // Reset fetch strategy for this session
+        this.useNativeFetch = true;
+        this.nativeFailCount = 0;
 
         // Extract session cookies for native Node.js fetch (bypasses Puppeteer CDP overhead)
         await this.extractSession(page);
@@ -172,11 +178,18 @@ export class InstagramApiClient {
                     "Sec-Fetch-Site": "same-origin",
                 },
             });
-            if (!res.ok) return null;
+            if (!res.ok) {
+                log(`nativeFetch ${res.status} for ${url.substring(0, 80)}...`, "scraper");
+                return null;
+            }
             const text = await res.text();
-            if (text.startsWith("<!") || text.startsWith("<html")) return null;
+            if (text.startsWith("<!") || text.startsWith("<html")) {
+                log(`nativeFetch got HTML instead of JSON (login wall?) for ${url.substring(0, 80)}...`, "scraper");
+                return null;
+            }
             return JSON.parse(text);
-        } catch {
+        } catch (err: any) {
+            log(`nativeFetch error: ${err?.message || err} for ${url.substring(0, 80)}...`, "scraper");
             return null;
         }
     }
@@ -208,19 +221,47 @@ export class InstagramApiClient {
                 body,
             });
             if (!res.ok) {
+                log(`nativePost ${res.status} for ${url.substring(0, 60)}...`, "scraper");
                 return { __error: `HTTP ${res.status}`, __preview: "" };
             }
             const text = await res.text();
             if (text.startsWith("<!") || text.startsWith("<html")) {
+                log(`nativePost got HTML (login wall?) for ${url.substring(0, 60)}...`, "scraper");
                 return { __error: "HTML response", __preview: text.substring(0, 100) };
             }
             return JSON.parse(text);
         } catch (e: any) {
+            log(`nativePost error: ${e?.message || e} for ${url.substring(0, 60)}...`, "scraper");
             return { __error: e?.message || "unknown", __preview: "" };
         }
     }
 
-    // ── Fallback: in-browser fetch (used when native fails) ─────────────
+    // Track whether native fetch works for this session.
+    // If it fails, we switch to in-browser fetch for all subsequent requests.
+    private useNativeFetch = true;
+
+    /**
+     * Smart fetch: tries nativeFetch first (fast), falls back to igFetch (reliable).
+     * Once nativeFetch fails twice, all subsequent calls use igFetch.
+     */
+    private nativeFailCount = 0;
+    private async smartFetch(page: Page, url: string): Promise<any> {
+        if (this.useNativeFetch) {
+            const data = await this.nativeFetch(url);
+            if (data) {
+                this.nativeFailCount = 0;
+                return data;
+            }
+            this.nativeFailCount++;
+            if (this.nativeFailCount >= 2) {
+                log(`nativeFetch failed ${this.nativeFailCount} times — switching to in-browser fetch for all requests`, "scraper");
+                this.useNativeFetch = false;
+            }
+        }
+
+        // In-browser fetch (uses actual browser session — most reliable)
+        return this.igFetch(page, url);
+    }
 
     private async igFetch(page: Page, url: string): Promise<any> {
         return page.evaluate(async (fetchUrl: string) => {
@@ -350,7 +391,13 @@ export class InstagramApiClient {
             "97b41c52301f77ce508f55e66d17620e",
         ];
 
-        const docIds: string[] = [];
+        // Known Instagram GraphQL doc_ids for comment queries
+        // These rotate periodically — multiple IDs for redundancy
+        const docIds: string[] = [
+            "8845758582119845",
+            "7750928498296498",
+            "6680706825100829",
+        ];
 
         const threadQueryHash = "51fdd02b67508306ad4484ff574a0b62";
 
@@ -401,11 +448,7 @@ export class InstagramApiClient {
                     const url =
                         `https://www.instagram.com/graphql/query/?query_hash=${hash}` +
                         `&variables=${encodeURIComponent(JSON.stringify(variables))}`;
-                    data = await this.nativeFetch(url);
-                    if (!data) {
-                        // Fallback to in-browser fetch
-                        data = await this.igFetch(page, url);
-                    }
+                    data = await this.smartFetch(page, url);
                     if (data) {
                         useQueryHash = hash;
                         break;
@@ -593,7 +636,7 @@ export class InstagramApiClient {
                         `https://www.instagram.com/graphql/query/?query_hash=${threadQueryHash}` +
                         `&variables=${encodeURIComponent(JSON.stringify(variables))}`;
 
-                    const data = await this.nativeFetch(url);
+                    const data = await this.smartFetch(page, url);
                     if (!data) break;
 
                     const threadedEdge = data?.data?.comment?.edge_threaded_comments;
@@ -667,7 +710,7 @@ export class InstagramApiClient {
                     let childUrl = `https://www.instagram.com/api/v1/media/${mediaId}/comments/${thread.commentPk}/child_comments/?`;
                     if (childMinId) childUrl += `min_id=${childMinId}&`;
 
-                    const childData = await this.nativeFetch(childUrl);
+                    const childData = await this.smartFetch(page, childUrl);
                     if (!childData) break;
 
                     let newCount = 0;
@@ -701,13 +744,7 @@ export class InstagramApiClient {
             childFetchQueue.push(promise);
         };
 
-        // Track native fetch success for fallback
-        let useNative = true;
-        let nativeFailCount = 0;
-
-        // ── Phase A: parent comments (pipelined) ─────────────────────
-        // Fire first request
-        let pendingFetch: Promise<any> | null = null;
+        // ── Phase A: parent comments ─────────────────────────────────
 
         // Track which cursor param to use: next_min_id uses &min_id=, next_max_id uses &max_id=
         let cursorParam: 'min_id' | 'max_id' = 'min_id';
@@ -718,36 +755,23 @@ export class InstagramApiClient {
             return url;
         };
 
-        // Start first request immediately
-        pendingFetch = useNative
-            ? this.nativeFetch(buildV1Url(null))
-            : this.igFetch(page, buildV1Url(null));
-
         let childIdx = 0;
+        let consecutiveEmptyPages = 0;
 
         for (let pageNum = 0; pageNum < MAX_PAGES && hasMore && Date.now() < deadline; pageNum++) {
-            // Await current page result
-            let data: any = await pendingFetch;
-            pendingFetch = null;
+            // Use smartFetch which handles native→igFetch fallback automatically
+            const data = await this.smartFetch(page, buildV1Url(minId));
 
             if (!data) {
-                // If native fetch failed, try in-browser fallback
-                if (useNative && nativeFailCount < 2) {
-                    nativeFailCount++;
-                    log(`v1 native fetch failed on page ${pageNum + 1}, trying in-browser fallback`, "scraper");
-                    const fallbackData = await this.igFetch(page, buildV1Url(minId));
-                    if (fallbackData) {
-                        useNative = false;
-                        data = fallbackData;
-                    }
-                }
-                if (!data) {
-                    log(`v1 API page ${pageNum + 1}: no response`, "scraper");
+                consecutiveEmptyPages++;
+                log(`v1 API page ${pageNum + 1}: no response (${consecutiveEmptyPages} consecutive failures)`, "scraper");
+                if (consecutiveEmptyPages >= 3) {
+                    log(`v1 API: ${consecutiveEmptyPages} consecutive failures — giving up`, "scraper");
                     break;
                 }
-            } else if (useNative) {
-                nativeFailCount = 0; // Reset on success
+                continue; // Try next page instead of breaking immediately
             }
+            consecutiveEmptyPages = 0;
 
             const rawComments: any[] = data.comments || [];
             let newCount = 0;
@@ -791,12 +815,7 @@ export class InstagramApiClient {
                 minId = null;
             }
 
-            // Pipeline: fire next page request immediately (don't wait for processing)
-            if (hasMore && pageNum + 1 < MAX_PAGES && Date.now() < deadline && allComments.size < targetCount) {
-                pendingFetch = useNative
-                    ? this.nativeFetch(buildV1Url(minId))
-                    : this.igFetch(page, buildV1Url(minId));
-            }
+            // Note: no pipelining — smartFetch needs sequential calls for fallback detection
 
             if (pageNum % 5 === 0 || newCount > 100) {
                 const elapsed = ((Date.now() - (deadline - InstagramApiClient.API_TIME_BUDGET_MS)) / 1000).toFixed(1);
