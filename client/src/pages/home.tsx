@@ -298,7 +298,7 @@ export default function Home() {
         {/* Built by Certified Random */}
         <section className="py-4 sm:py-6 px-2 sm:px-4 md:px-0">
           <div className="border-4 border-black bg-slate-50 p-4 sm:p-6 text-center">
-            <p className="font-bold text-slate-700">Pick Us A Winner was designed and built by <a href="https://certifiedrandom.studios" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Certified Random</a> — a studio that builds tools for creators.</p>
+            <p className="font-bold text-slate-700">Pick Us A Winner was designed and built by <a href="https://certifiedrandom.onrender.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Certified Random</a> — a studio that builds tools for creators.</p>
             <p className="text-sm text-muted-foreground font-medium mt-1">The backend has been retired. The free tools below still work.</p>
           </div>
         </section>

@@ -24,6 +24,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-sans selection:bg-accent selection:text-white">
+      {/* Demo-mode banner — Pick Us A Winner is a viewing playground.
+          Backend tools (Instagram scraping, scheduling, payments) are
+          not deployed; the site shows what the product looks like.
+          For real giveaway picking, the free client-side tools (wheel,
+          name picker, option picker) still work — they don't need a
+          server. */}
+      <div className="w-full bg-black text-white border-b-4 border-primary">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center">
+          <span className="font-black uppercase tracking-widest text-[10px] sm:text-xs">
+            Demo · Viewing playground · Not in active service
+          </span>
+          <span className="hidden sm:inline text-white/40">·</span>
+          <span className="text-[10px] sm:text-xs font-bold">
+            Made by{" "}
+            <a
+              href="https://certifiedrandom.onrender.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline underline-offset-2 font-black"
+            >
+              Certified Random
+            </a>
+          </span>
+        </div>
+      </div>
+
       {/* Neo-Brutalist Navbar */}
       <header className="sticky top-0 z-50 w-full border-b-4 border-black bg-white shadow-sm">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 h-20 flex items-center justify-between">
@@ -109,7 +135,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                 <div className="mt-auto p-8 border-t-4 border-black bg-white">
                   <p className="font-black uppercase tracking-widest text-sm mb-2">Built by</p>
-                  <a href="https://certifiedrandom.studios" target="_blank" rel="noopener noreferrer" className="font-black uppercase text-xl text-primary hover:underline italic">
+                  <a href="https://certifiedrandom.onrender.com" target="_blank" rel="noopener noreferrer" className="font-black uppercase text-xl text-primary hover:underline italic">
                     Certified Random
                   </a>
                 </div>
@@ -174,7 +200,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link href="/contact" className="hover:underline underline-offset-4">Contact</Link>
               <Link href="/privacy" className="hover:underline underline-offset-4">Privacy Policy</Link>
               <Link href="/terms" className="hover:underline underline-offset-4">Terms of Service</Link>
-              <a href="https://certifiedrandom.studios" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">Certified Random</a>
+              <a href="https://certifiedrandom.onrender.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">Certified Random</a>
             </div>
           </div>
         </div>
