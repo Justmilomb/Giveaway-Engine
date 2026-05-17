@@ -2,7 +2,7 @@ import Layout from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Mail, ArrowRight } from "lucide-react";
 
-const CONTACT_EMAIL = "info@certifiedrandom.studio";
+const CONTACT_EMAIL = "info@useblank.ai";
 
 export default function ContactPage() {
   const breadcrumbData = {

@@ -839,7 +839,7 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * Contact Received - sent to info@certifiedrandom.studio
+ * Contact Received - sent to info@useblank.ai
  */
 export function getContactReceivedHTML(data: ContactFormData): string {
   const safeMessage = escapeHtml(data.message).replace(/\n/g, "<br>");
@@ -930,7 +930,7 @@ export function getContactAutoReplyHTML(data: { name: string }): string {
         <h3>What to Expect</h3>
         <ul>
           <li>We typically respond within <strong>24–48 hours</strong> during business days</li>
-          <li>For urgent matters, you can reach us at <a href="mailto:info@certifiedrandom.studio" style="color: #E1306C;">info@certifiedrandom.studio</a></li>
+          <li>For urgent matters, you can reach us at <a href="mailto:info@useblank.ai" style="color: #E1306C;">info@useblank.ai</a></li>
           <li>Check your spam folder if you don't see our reply</li>
         </ul>
       </div>
@@ -988,7 +988,7 @@ Thank you for contacting PickUsAWinner. We've received your message and our team
 
 What to Expect:
 - We typically respond within 24–48 hours during business days
-- For urgent matters: info@certifiedrandom.studio
+- For urgent matters: info@useblank.ai
 - Check your spam folder if you don't see our reply
 
 In the meantime, try our free Instagram giveaway picker:

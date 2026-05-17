@@ -6,7 +6,7 @@ import { storage } from "../storage";
 // The route module used to wire a POST /api/contact form handler that
 // fanned out to the support inbox + the user via Nodemailer. Pick Us A
 // Winner is now a viewing playground (no contact form, email-only via
-// info@certifiedrandom.studio) so the email plumbing is gone — these
+// info@useblank.ai) so the email plumbing is gone — these
 // imports went with it.
 //
 // The `emailRateLimiter` dep is still accepted on the call signature
@@ -112,8 +112,8 @@ export function registerPublicRoutes(app: Express, _deps: PublicRouteDeps): void
   // pointing at the email address instead of a generic 404.
   app.post("/api/contact", (_req, res) => {
     res.status(410).json({
-      error: "Contact form removed. Email info@certifiedrandom.studio directly.",
-      email: "info@certifiedrandom.studio",
+      error: "Contact form removed. Email info@useblank.ai directly.",
+      email: "info@useblank.ai",
     });
   });
 
